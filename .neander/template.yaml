@@ -1,0 +1,35 @@
+contract_version: 1
+id: fold
+title: Fold
+description: |
+  **Build forms, share them and make sense of the responses.**
+
+  Fold is a single-owner form workspace inspired by Tally. Build forms with twelve question and content types, keep draft changes separate from published forms, share a link or iframe, and review responses with their original question snapshots.
+
+  Explore fictional feedback and workshop forms, sample responses and an unpublished project-enquiry draft. Email/password accounts use PostgreSQL-backed sessions. Password recovery requires your own verified email delivery configuration; it is disabled by default. Team collaboration, conditional logic, file uploads and payments are not included.
+category: Forms & Surveys
+best_for: Individuals collecting feedback, enquiries and event registrations
+features:
+  - Twelve question and content block types
+  - Draft editing and explicit publish or unpublish
+  - Shareable public forms and iframe embeds
+  - Response search, date filters and pagination
+  - Historical answer snapshots and CSV export
+  - Form duplication, archive and restore
+included:
+  - Fold form builder and response workspace
+  - PostgreSQL migrations and session authentication
+  - Fictional forms and five sample responses
+  - Optional password recovery configuration guide
+thumbnail: .neander/thumbnail.png
+screenshots:
+  - .neander/screenshots/editor.png
+  - .neander/screenshots/responses.png
+  - .neander/screenshots/public-form.png
+commands:
+  install: [pnpm, install, --frozen-lockfile]
+  check: [pnpm, run, check]
+  test: [pnpm, run, test]
+  verify: [pnpm, run, test:template]
+seed:
+  command: [pnpm, run, db:seed]
