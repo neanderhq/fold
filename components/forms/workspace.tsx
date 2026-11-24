@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ErrorNotice, Loading, OwnerShell } from "./shared";
 import { AuthShell } from "./auth-shell";
+import { NewFormDialog } from "./new-form-dialog";
 
 function SignIn() {
   const [register, setRegister] = useState(false);
@@ -58,14 +59,15 @@ function Dashboard() {
   const [archived, setArchived] = useState(false);
   const [renaming, setRenaming] = useState<SavedForm | null>(null);
   const [title, setTitle] = useState("");
+  const [starting, setStarting] = useState(false);
   useEffect(() => {
     api<SavedForm[]>("/api/forms").then(setForms).catch((cause) => setError(cause.message)).finally(() => setLoading(false));
   }, []);
-  async function create() {
+  async function create(starter?: string) {
     setBusy(true);
     setError("");
     try {
-      const form = await api<SavedForm>("/api/forms", "POST", {});
+      const form = await api<SavedForm>("/api/forms", "POST", starter ? { starter } : {});
       router.push(`/forms/${form.id}`);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not create form."); setBusy(false); }
   }
@@ -79,10 +81,11 @@ function Dashboard() {
   }
   const visible = forms.filter((form) => Boolean(form.archived) === archived);
   return <OwnerShell>
-    <div className="mb-10 flex flex-wrap items-start justify-between gap-5"><div><p className="mb-2 text-sm text-muted-foreground">Your private workspace</p><h1>My forms</h1><p className="mt-3 text-muted-foreground">Thoughtful questions. Answers that stay with you.</p></div><Button onClick={create} disabled={busy}><Plus />{busy ? "Please wait…" : "New form"}</Button></div>
+    <NewFormDialog open={starting} onOpenChange={open => { setStarting(open); setError(""); }} busy={busy} error={error} onCreate={starter => void create(starter)} />
+    <div className="mb-10 flex flex-wrap items-start justify-between gap-5"><div><p className="mb-2 text-sm text-muted-foreground">Your private workspace</p><h1>My forms</h1><p className="mt-3 text-muted-foreground">Thoughtful questions. Answers that stay with you.</p></div><Button onClick={() => setStarting(true)} disabled={busy}><Plus />New form</Button></div>
     <div className="mb-6 flex gap-2" aria-label="Form status filter"><Button variant={archived ? "outline" : "secondary"} onClick={() => setArchived(false)}>Active forms</Button><Button variant={archived ? "secondary" : "outline"} onClick={() => setArchived(true)}>Archived forms</Button></div>
     {error && <div className="mb-6"><ErrorNotice message={error} /></div>}
-    {loading ? <Loading /> : visible.length === 0 ? <Card className="border-dashed shadow-none"><CardContent className="flex flex-col items-center px-6 py-16 text-center"><FileText className="mb-5 size-8 text-muted-foreground" /><h2>{archived ? "No archived forms" : "Your first form starts here"}</h2><p className="mb-6 mt-2 max-w-sm text-muted-foreground">{archived ? "Archived forms keep their responses and can be restored." : "Build a form, share your link, and keep every answer in one place."}</p>{!archived && <Button onClick={create} disabled={busy}>Create a form<ArrowRight /></Button>}</CardContent></Card> : <div className="grid gap-4 sm:grid-cols-2">{visible.map((form) => <Card key={form.id} className="min-w-0 shadow-none">
+    {loading ? <Loading /> : visible.length === 0 ? <Card className="border-dashed shadow-none"><CardContent className="flex flex-col items-center px-6 py-16 text-center"><FileText className="mb-5 size-8 text-muted-foreground" /><h2>{archived ? "No archived forms" : "Your first form starts here"}</h2><p className="mb-6 mt-2 max-w-sm text-muted-foreground">{archived ? "Archived forms keep their responses and can be restored." : "Build a form, share your link, and keep every answer in one place."}</p>{!archived && <Button onClick={() => setStarting(true)} disabled={busy}>Create a form<ArrowRight /></Button>}</CardContent></Card> : <div className="grid gap-4 sm:grid-cols-2">{visible.map((form) => <Card key={form.id} className="min-w-0 shadow-none">
       <CardContent className="p-6">
         <div className="mb-6 flex items-center justify-between"><FileText className="size-5 text-muted-foreground" /><Badge variant={form.isPublished ? "default" : "secondary"}>{form.archived ? "Archived" : form.isPublished ? "Published" : "Draft"}</Badge></div>
         <Link href={`/forms/${form.id}`} className="rounded outline-none focus-visible:ring-2 focus-visible:ring-ring"><h2 className="break-words text-lg hover:underline">{form.draft.title}</h2></Link>

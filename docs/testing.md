@@ -58,3 +58,20 @@ unsaved-navigation confirmation, question picker/duplication/real dragging,
 explicit publication and desktop/tablet/mobile layouts. It creates and removes
 only its fictional owner. The existing all-field, ownership, iframe, historical
 response, filtering/export and mobile suites still run through production checks.
+
+## Form quality and summaries
+
+`scripts/test-product-polish-browser.cjs` exercises starter selection, direct
+label/choice editing, all three appearance presets, explicit republication,
+inline validation, keyboard star ratings and phone layouts. It creates fictional
+owners and removes only their records from the disposable local database.
+
+The suite submits 25 responses to exercise the real PostgreSQL summary query
+beyond one page. It verifies weighted ratings, multi-select counts, search/date
+filters and owner isolation, then changes a question's wording and scale to check
+separate historical summaries and unchanged response snapshots. Unit tests cover
+the shared answer rules, preset validation and fresh starter question IDs.
+
+Summary queries aggregate all filtered responses in PostgreSQL. They do not use
+the browser's current response page. `FOLD_CAPTURE_DIRECTORY` additionally records
+the starter picker, appearance settings and summaries for the template gallery.

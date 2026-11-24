@@ -7,8 +7,10 @@ registerHooks({ resolve(specifier, context, nextResolve) {
   if (specifier.startsWith(".") && context.parentURL?.includes("/lib/") && !specifier.endsWith(".ts")) return nextResolve(new URL(`${specifier}.ts`, context.parentURL).href, context);
   return nextResolve(specifier, context);
 } });
-const { parseSchema, parseAnswers, blocksOf, fieldTypes } = await import("../lib/form-schema.ts");
+const { parseSchema, parseAnswers, answerErrors, blocksOf, fieldTypes, appearances } = await import("../lib/form-schema.ts");
 const { csvCell, responseCsv } = await import("../lib/response-csv.ts");
+const { formStarters, starterDraft } = await import("../lib/form-starters.ts");
+const { summarizeAnswerCounts } = await import("../lib/response-summary.ts");
 const field = (type, extra = {}) => ({ id: randomUUID(), type, label: `Test ${type}`, required: true, ...extra });
 const schema = (block) => ({ title: "Feedback", blocks: [block] });
 const cases = {
@@ -64,4 +66,48 @@ test("spreadsheet-safe CSV: escaping, all versions of historical labels", () => 
   const csv = responseCsv([original, updated]);
   assert.ok(csv.includes("Old label")); assert.ok(csv.includes("New label")); assert.ok(csv.includes("'=SUM(1,2)")); assert.ok(csv.includes('""hello""'));
   assert.equal(original.schemaSnapshot.blocks[0].label, "Old label");
+});
+test("inline validation reports all invalid fields and agrees with API validation", () => {
+  const blocks = [field("short_text"), field("email"), field("number", { min: 1, max: 5 }), field("date"), field("single_choice", { options: ["One", "Two"] }), field("consent"), field("long_text", { required: false })];
+  const form = parseSchema({ title: "Validation", blocks });
+  const answers = { [blocks[1].id]: "bad@", [blocks[2].id]: 6, [blocks[3].id]: "2026-02-29", [blocks[4].id]: "Other", [blocks[5].id]: false };
+  assert.equal(Object.keys(answerErrors(answers, form)).length, 6);
+  assert.throws(() => parseAnswers(answers, form));
+  const valid = { [blocks[0].id]: "Alex", [blocks[1].id]: "alex@example.invalid", [blocks[2].id]: 5, [blocks[3].id]: "2026-02-28", [blocks[4].id]: "One", [blocks[5].id]: true };
+  assert.deepEqual(answerErrors(valid, form), {});
+  assert.doesNotThrow(() => parseAnswers(valid, form));
+});
+test("appearance presets survive schema validation without changing legacy forms", () => {
+  const form = schema(field("email"));
+  assert.deepEqual(parseSchema(form), form);
+  for (const appearance of appearances) assert.equal(parseSchema({ ...form, appearance }).appearance, appearance);
+  for (const appearance of [null, {}, "custom", "url(https://example.invalid)"]) assert.throws(() => parseSchema({ ...form, appearance }));
+});
+test("starter forms produce valid, unpublished content with fresh question IDs", () => {
+  assert.equal(starterDraft().question.type, "short_text");
+  for (const starter of formStarters) {
+    const first = starterDraft(starter.id), second = starterDraft(starter.id);
+    assert.deepEqual(parseSchema(first), first);
+    assert.equal(first.blocks.length, starter.blocks.length);
+    assert.ok(first.blocks.every(block => !second.blocks.some(other => other.id === block.id)));
+    first.blocks[0].label = "Edited";
+    assert.notEqual(starterDraft(starter.id).blocks[0].label, "Edited");
+  }
+  assert.throws(() => starterDraft("missing"));
+  assert.throws(() => starterDraft(""));
+});
+test("answer summaries weight counts, include unanswered questions and preserve versions", () => {
+  const rating = { id: randomUUID(), label: "Experience", type: "rating", max: 5 };
+  const choice = { id: randomUUID(), label: "Worked well", type: "multi_choice", options: ["Clarity", "Support"] };
+  const summaries = summarizeAnswerCounts([
+    { question: rating, answer: 5, count: 2 }, { question: rating, answer: 2, count: 1 }, { question: rating, answer: "", count: 1 },
+    { question: choice, answer: ["Clarity", "Support"], count: 2 }, { question: choice, answer: ["Support"], count: 1 }, { question: choice, answer: [], count: 1 },
+    { question: { ...rating, label: "New wording", max: 10 }, answer: 9, count: 1 },
+    { question: { ...choice, options: ["Clarity", "Speed"] }, answer: ["Speed"], count: 1 },
+  ]);
+  assert.equal(summaries.length, 4);
+  assert.equal(summaries[0].average, 4); assert.equal(summaries[0].responses, 4); assert.equal(summaries[0].answered, 3);
+  assert.deepEqual(summaries[1].options, [{ label: "Clarity", count: 2 }, { label: "Support", count: 3 }]);
+  assert.equal(summaries[1].answered, 3); assert.equal(summaries[1].responses, 4);
+  assert.equal(summaries[2].average, 9); assert.equal(summaries[3].options[1].count, 1);
 });

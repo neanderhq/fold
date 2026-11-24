@@ -14,15 +14,23 @@ same workflow. You can run and modify the source independently under MIT.
 - Email/password login and one private workspace per owner.
 - Short/long text, email, number, date, single/multiple choice, dropdown, rating
   and consent questions, plus heading/description blocks and draft previews.
+- Keyboard-accessible star ratings, choice tiles and inline validation with an
+  error summary. Preview and public forms use the same controls and answer rules.
+- Blank forms or ready-to-edit feedback, workshop and enquiry starters. Each
+  starter creates a private draft with fresh question IDs and no responses.
 - Automatic draft saving, explicit publish/republish, unpublish, duplicate, rename,
-  archive and restore. Add questions with a picker; duplicate and drag blocks, or
-  reorder with keyboard-accessible arrow buttons.
+  archive and restore. Edit labels and choices directly; keep advanced question
+  settings out of the way. Add, duplicate and drag blocks, or use arrow buttons.
+- Classic, Paper and Meadow appearance presets, reflected in the preview and
+  saved with the published form. Paper uses Georgia headings; the others use Inter.
 - Public forms and iframe embeds; private response lists/details, filtering,
-  pagination and CSV export. Responses retain the schema used at submission.
+  pagination and CSV export. Ratings and choices have summaries over all filtered
+  responses, with historical question versions kept separate. Responses retain
+  the schema used at submission.
 - PostgreSQL migrations, fictional sample forms/responses and isolated tests.
 - Optional Better Auth password recovery through your own Resend configuration.
 
-This version does not include shared/team workspaces, file uploads, conditional
+This version does not include shared/team workspaces, multi-page forms, file uploads, conditional
 logic, payments or third-party business integrations. External HTTPS logos are
 loaded by the browser. Password recovery is disabled until configured with a
 verified sender; template publication does not supply an email provider account.

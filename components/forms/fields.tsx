@@ -1,6 +1,8 @@
 "use client";
 
-import { blocksOf, isContent, safeLogo, type Answers, type FormSchema } from "@/lib/form-schema";
+import { useState } from "react";
+import { Star } from "lucide-react";
+import { blocksOf, isContent, safeLogo, type Answers, type FormBlock, type FormSchema } from "@/lib/form-schema";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,25 +10,48 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export function ChoiceSelect({ value, options, onChange, label, disabled = false }: { value: string; options: string[]; onChange: (value: string) => void; label: string; disabled?: boolean }) {
-  return <Select value={value || undefined} onValueChange={onChange} disabled={disabled}><SelectTrigger aria-label={label} className="w-full"><SelectValue placeholder="Choose an option" /></SelectTrigger><SelectContent className="max-w-[calc(100vw-3rem)]">{options.map((option) => <SelectItem key={option} value={option} className="whitespace-normal break-words">{option}</SelectItem>)}</SelectContent></Select>;
+type FieldState = { "aria-describedby"?: string; "aria-invalid"?: boolean };
+
+export function ChoiceSelect({ value, options, onChange, label, disabled = false, ...state }: { value: string; options: string[]; onChange: (value: string) => void; label: string; disabled?: boolean } & FieldState) {
+  return <Select value={value || undefined} onValueChange={onChange} disabled={disabled}><SelectTrigger aria-label={label} className="w-full" {...state}><SelectValue placeholder="Choose an option" /></SelectTrigger><SelectContent className="max-w-[calc(100vw-3rem)]">{options.map(option => <SelectItem key={option} value={option} className="whitespace-normal break-words">{option}</SelectItem>)}</SelectContent></Select>;
 }
 
-export function FormFields({ schema, answers, onChange, disabled = false, prefix = "" }: { schema: FormSchema; answers: Answers; onChange: (answers: Answers) => void; disabled?: boolean; prefix?: string }) {
-  return <>{blocksOf(schema).map((block) => {
-    const id = `${prefix}${block.id}`;
-    const value = answers[block.id];
-    const set = (answer: Answers[string]) => onChange({ ...answers, [block.id]: answer });
+function RatingField({ id, max, value, onChange, disabled, state }: { id: string; max: number; value: string; onChange: (value: string) => void; disabled: boolean; state: FieldState }) {
+  const [hover, setHover] = useState<number | null>(null);
+  return <div><RadioGroup aria-labelledby={`${id}-label`} {...state} value={value} onValueChange={onChange} disabled={disabled} orientation="horizontal" className="fold-rating" onMouseLeave={() => setHover(null)} onKeyDownCapture={event => {
+    if (disabled || event.altKey || event.ctrlKey || event.metaKey || !["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "Home", "End"].includes(event.key)) return;
+    const radios = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
+    const current = radios.indexOf(event.target as HTMLButtonElement);
+    if (current < 0) return;
+    const next = event.key === "Home" ? 0 : event.key === "End" ? max - 1 : (current + (["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : -1) + max) % max;
+    // Select before moving focus, including when arrow keys are released quickly.
+    event.preventDefault(); onChange(String(next + 1)); radios[next].focus();
+  }}>
+    {Array.from({ length: max }, (_, index) => <RadioGroupItem key={index} id={`${id}-${index}`} value={String(index + 1)} aria-label={String(index + 1)} className="fold-rating-star" data-filled={index < (hover ?? Number(value))} onMouseEnter={() => setHover(index + 1)}><Star aria-hidden="true" /></RadioGroupItem>)}
+  </RadioGroup><p className="mt-2 text-xs text-muted-foreground">{value ? `${value} of ${max} stars` : `Choose 1 to ${max} stars`}</p></div>;
+}
+
+function AnswerField({ block, id, value, set, disabled, state }: { block: FormBlock; id: string; value: Answers[string] | undefined; set: (answer: Answers[string]) => void; disabled: boolean; state: FieldState }) {
+  if (block.type === "rating") return <RatingField id={id} max={block.max ?? 5} value={value === undefined ? "" : String(value)} onChange={set} disabled={disabled} state={state} />;
+  if (block.type === "multi_choice") return <fieldset aria-labelledby={`${id}-label`} {...state} className="fold-choices" disabled={disabled}>{block.options?.map((option, index) => <Label key={option} htmlFor={`${id}-${index}`} className="fold-choice" data-selected={Array.isArray(value) && value.includes(option)}><Checkbox id={`${id}-${index}`} {...state} checked={Array.isArray(value) && value.includes(option)} onCheckedChange={checked => set(checked ? [...(Array.isArray(value) ? value : []), option] : (Array.isArray(value) ? value : []).filter(item => item !== option))} /><span>{option}</span></Label>)}</fieldset>;
+  if (block.type === "single_choice") return <RadioGroup aria-labelledby={`${id}-label`} {...state} value={typeof value === "string" ? value : ""} onValueChange={set} disabled={disabled} className="fold-choices">{block.options?.map((option, index) => <Label key={option} htmlFor={`${id}-${index}`} className="fold-choice" data-selected={value === option}><RadioGroupItem value={option} id={`${id}-${index}`} {...state} /><span>{option}</span></Label>)}</RadioGroup>;
+  if (block.type === "dropdown") return <ChoiceSelect label={block.label} value={typeof value === "string" ? value : ""} options={block.options ?? []} onChange={set} disabled={disabled} {...state} />;
+  if (block.type === "consent") return <Label htmlFor={id} className="fold-choice" data-selected={value === true}><Checkbox id={id} checked={value === true} onCheckedChange={checked => set(checked === true)} disabled={disabled} {...state} /><span>I agree</span></Label>;
+  if (block.type === "long_text") return <Textarea id={id} {...state} value={typeof value === "string" ? value : ""} onChange={event => set(event.target.value)} required={block.required} maxLength={10000} disabled={disabled} rows={5} />;
+  return <Input id={id} {...state} type={block.type === "short_text" ? "text" : block.type} value={typeof value === "string" || typeof value === "number" ? value : ""} onChange={event => set(event.target.value)} required={block.required} min={block.min} max={block.max} step={block.type === "number" ? "any" : undefined} maxLength={block.type === "email" ? 254 : 2000} disabled={disabled} autoComplete="off" />;
+}
+
+export function FormFields({ schema, answers, onChange, disabled = false, prefix = "", errors = {} }: { schema: FormSchema; answers: Answers; onChange: (answers: Answers) => void; disabled?: boolean; prefix?: string; errors?: Record<string, string> }) {
+  return <>{blocksOf(schema).map(block => {
+    const id = `${prefix}${block.id}`, value = answers[block.id];
     if (isContent(block)) return block.type === "heading" ? <h2 key={id} className="break-words text-xl">{block.label}</h2> : <p key={id} className="whitespace-pre-wrap break-words text-muted-foreground">{block.label}</p>;
-    const label = <span>{block.label} {block.required ? <span aria-label="required" className="text-destructive">*</span> : <span className="text-sm text-muted-foreground">(optional)</span>}</span>;
-    return <div key={id} className="min-w-0 space-y-3"><Label htmlFor={id} id={`${id}-label`} className="block break-words text-base leading-relaxed">{label}</Label>{block.description && <p id={`${id}-help`} className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{block.description}</p>}
-      {block.type === "multi_choice" ? <fieldset aria-labelledby={`${id}-label`} className="space-y-3" disabled={disabled}>{block.options?.map((option, index) => <div key={option} className="flex items-start gap-3"><Checkbox id={`${id}-${index}`} checked={Array.isArray(value) && value.includes(option)} onCheckedChange={(checked) => set(checked ? [...(Array.isArray(value) ? value : []), option] : (Array.isArray(value) ? value : []).filter((item) => item !== option))} /><Label htmlFor={`${id}-${index}`} className="break-words leading-snug">{option}</Label></div>)}</fieldset>
-        : block.type === "single_choice" || block.type === "rating" ? <RadioGroup aria-labelledby={`${id}-label`} value={value === undefined ? "" : String(value)} onValueChange={set} disabled={disabled} className="space-y-2">{(block.type === "rating" ? Array.from({ length: block.max ?? 5 }, (_, index) => String(index + 1)) : block.options ?? []).map((option, index) => <div key={option} className="flex items-center gap-3"><RadioGroupItem value={option} id={`${id}-${index}`} /><Label htmlFor={`${id}-${index}`} className="break-words">{option}</Label></div>)}</RadioGroup>
-          : block.type === "dropdown" ? <ChoiceSelect label={block.label} value={typeof value === "string" ? value : ""} options={block.options ?? []} onChange={set} disabled={disabled} />
-            : block.type === "consent" ? <div className="flex items-center gap-3"><Checkbox id={id} checked={value === true} onCheckedChange={(checked) => set(checked === true)} disabled={disabled} /><Label htmlFor={id}>I agree</Label></div>
-              : block.type === "long_text" ? <Textarea id={id} aria-describedby={block.description ? `${id}-help` : undefined} value={typeof value === "string" ? value : ""} onChange={(event) => set(event.target.value)} required={block.required} maxLength={10000} disabled={disabled} rows={5} />
-                : <Input id={id} aria-describedby={block.description ? `${id}-help` : undefined} type={block.type === "short_text" ? "text" : block.type} value={typeof value === "string" || typeof value === "number" ? value : ""} onChange={(event) => set(event.target.value)} required={block.required} min={block.min} max={block.max} step={block.type === "number" ? "any" : undefined} maxLength={block.type === "email" ? 254 : 2000} disabled={disabled} autoComplete="off" />}
-      {!block.required && (block.type === "dropdown" || block.type === "single_choice" || block.type === "rating") && value !== undefined && value !== "" && <button type="button" className="text-xs text-primary underline" disabled={disabled} onClick={() => set("")}>Clear answer</button>}
+    const state: FieldState = { "aria-describedby": [block.description ? `${id}-help` : "", errors[block.id] ? `${id}-error` : ""].filter(Boolean).join(" ") || undefined, "aria-invalid": Boolean(errors[block.id]) };
+    return <div key={id} id={`${id}-field`} data-field-id={block.id} className="fold-field min-w-0 space-y-3">
+      <Label htmlFor={id} id={`${id}-label`} className="block break-words text-base font-semibold leading-relaxed">{block.label} {block.required ? <span aria-label="required" className="text-destructive">*</span> : <span className="text-sm font-normal text-muted-foreground">(optional)</span>}</Label>
+      {block.description && <p id={`${id}-help`} className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{block.description}</p>}
+      <AnswerField block={block} id={id} value={value} set={answer => onChange({ ...answers, [block.id]: answer })} disabled={disabled} state={state} />
+      {!block.required && ["dropdown", "single_choice", "rating"].includes(block.type) && value !== undefined && value !== "" && <button type="button" className="text-xs text-primary underline" disabled={disabled} onClick={() => onChange({ ...answers, [block.id]: "" })}>Clear answer</button>}
+      {errors[block.id] && <p id={`${id}-error`} className="fold-field-error">{errors[block.id]}</p>}
     </div>;
   })}</>;
 }

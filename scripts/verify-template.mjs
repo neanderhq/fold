@@ -62,7 +62,13 @@ async function main() {
     const forms = await json(await context.request.get(`${origin.origin}/api/forms`));
     assert.equal(forms.length, 3); assert.equal(forms.find(f => f.id === FORM).responseCount, 3);
     const capture = process.env.FOLD_CAPTURE_DIRECTORY;
-    if (capture) { await mkdir(join(capture, 'screenshots'), { recursive: true }); await page.screenshot({ path: join(capture, 'thumbnail.png') }); }
+    if (capture) {
+      await mkdir(join(capture, 'screenshots'), { recursive: true }); await page.screenshot({ path: join(capture, 'thumbnail.png') });
+      await page.getByRole('button', { name: 'New form', exact: true }).click();
+      await page.getByRole('dialog', { name: 'Start your next form', exact: true }).waitFor();
+      await page.screenshot({ path: join(capture, 'screenshots/start-form.png'), animations: 'disabled' });
+      await page.getByRole('button', { name: 'Close', exact: true }).click();
+    }
     await page.goto(`${origin.origin}/forms/${FORM}`);
     await page.getByLabel('Form title', { exact: true }).waitFor();
     assert.equal(await page.getByLabel('Form title', { exact: true }).inputValue(), 'Customer feedback');
@@ -72,6 +78,9 @@ async function main() {
       await page.getByRole('dialog', { name: 'Add a block', exact: true }).waitFor();
       await page.screenshot({ path: join(capture, 'screenshots/add-block.png'), animations: 'disabled' });
       await page.getByRole('button', { name: 'Close', exact: true }).click();
+      await page.getByRole('tab', { name: 'Settings', exact: true }).click();
+      await page.screenshot({ path: join(capture, 'screenshots/appearance.png'), animations: 'disabled' });
+      await page.getByRole('tab', { name: /^Questions/ }).click();
       await page.getByRole('button', { name: 'Share', exact: true }).click();
       await page.getByRole('dialog', { name: 'Share your form', exact: true }).waitFor();
       await page.screenshot({ path: join(capture, 'screenshots/share.png'), animations: 'disabled' });
@@ -80,7 +89,12 @@ async function main() {
     await page.goto(`${origin.origin}/forms/${FORM}/responses`);
     await page.getByRole('heading', { name: 'Responses', exact: true }).waitFor();
     await page.getByRole('region', { name: 'Response list', exact: true }).getByRole('button').first().waitFor();
-    if (capture) await page.screenshot({ path: join(capture, 'screenshots/responses.png') });
+    if (capture) {
+      await page.screenshot({ path: join(capture, 'screenshots/responses.png') });
+      await page.getByRole('tab', { name: 'Summary', exact: true }).click();
+      await page.getByRole('region', { name: 'Answer summaries', exact: true }).waitFor();
+      await page.screenshot({ path: join(capture, 'screenshots/summary.png') });
+    }
     const anonymous = await browser.newContext(), publicPage = await anonymous.newPage();
     await publicPage.goto(`${origin.origin}/f/${FORM}`);
     await publicPage.getByRole('heading', { name: 'Customer feedback', exact: true }).waitFor();
@@ -102,6 +116,7 @@ async function main() {
     await run(process.execPath, ['scripts/test-builder-browser.cjs'], { env: browserEnvironment });
     await run(process.execPath, ['scripts/test-response-navigation-browser.cjs'], { env: browserEnvironment });
     await run(process.execPath, ['scripts/test-editor-browser.cjs'], { env: browserEnvironment });
+    await run(process.execPath, ['scripts/test-product-polish-browser.cjs'], { env: browserEnvironment });
     console.log('PASS: built Fold image, fictional seeded owner/forms/responses, repeat seed preservation, persistent edit after restart, live API and desktop/mobile browser suites');
   } finally {
     await browser?.close(); if (connected) await db.end();

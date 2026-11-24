@@ -1,7 +1,8 @@
 export const fieldTypes = ["short_text", "long_text", "email", "number", "date", "single_choice", "multi_choice", "dropdown", "rating", "consent", "heading", "description"] as const;
 export type FieldType = typeof fieldTypes[number];
 export type FormBlock = { id: string; type: FieldType; label: string; required: boolean; description?: string; options?: string[]; min?: number; max?: number };
-export type FormSchema = { title: string; question?: FormBlock; blocks?: FormBlock[]; description?: string; logoUrl?: string; confirmation?: string };
+export const appearances = ["classic", "paper", "meadow"] as const;
+export type FormSchema = { title: string; question?: FormBlock; blocks?: FormBlock[]; description?: string; logoUrl?: string; confirmation?: string; appearance?: typeof appearances[number] };
 export type Answer = string | string[] | number | boolean;
 export type Answers = Record<string, Answer>;
 
@@ -31,7 +32,7 @@ export function safeLogo(value: string) {
 }
 export function parseSchema(value: unknown, questionId?: string): FormSchema {
   if (!isRecord(value)) throw new InputError("A form is required.");
-  exactKeys(value, ["title", "question", "blocks", "description", "logoUrl", "confirmation"]);
+  exactKeys(value, ["title", "question", "blocks", "description", "logoUrl", "confirmation", "appearance"]);
   if (value.question && value.blocks) throw new InputError("Supply blocks or a legacy question, not both.");
   const legacy = value.blocks === undefined;
   const source = legacy ? [value.question] : value.blocks;
@@ -67,41 +68,51 @@ export function parseSchema(value: unknown, questionId?: string): FormSchema {
   const result: FormSchema = { title: text(value.title, "Form title", 200), ...(legacy ? { question: blocks[0] } : { blocks }) };
   for (const key of ["description", "logoUrl", "confirmation"] as const) if (value[key] !== undefined) result[key] = text(value[key], key, key === "logoUrl" ? 2048 : 2000, false);
   if (!safeLogo(result.logoUrl ?? "")) throw new InputError("Use an HTTPS logo URL without credentials or a custom port.");
+  if (value.appearance !== undefined) {
+    if (!appearances.includes(value.appearance as typeof appearances[number])) throw new InputError("Choose an available appearance.");
+    result.appearance = value.appearance as typeof appearances[number];
+  }
   return result;
 }
-export function parseAnswers(value: unknown, schema: FormSchema): Answers {
-  if (!isRecord(value)) throw new InputError("Answers must be an object.");
-  const fields = blocksOf(schema).filter((block) => !isContent(block));
-  exactKeys(value, fields.map((block) => block.id));
-  const answers: Answers = {};
-  for (const block of fields) {
-    const answer = value[block.id];
+function parseAnswer(answer: unknown, block: FormBlock): Answer {
     const missing = answer === undefined || (block.type !== "consent" && typeof answer === "string" && !answer.trim()) || (block.type === "multi_choice" && Array.isArray(answer) && answer.length === 0) || (block.type === "consent" && answer === false);
     if (missing) {
-      if (block.required) throw new InputError(`Please answer the required question: ${block.label}`);
-      answers[block.id] = block.type === "multi_choice" ? [] : block.type === "consent" ? false : "";
-      continue;
+      if (block.required) throw new InputError(block.type === "consent" ? "Please confirm to continue." : "Please answer this question.");
+      return block.type === "multi_choice" ? [] : block.type === "consent" ? false : "";
     }
     if (block.type === "multi_choice") {
       if (!Array.isArray(answer) || answer.some((item) => typeof item !== "string" || !block.options?.includes(item)) || new Set(answer).size !== answer.length) throw new InputError(`Choose valid options for ${block.label}.`);
-      answers[block.id] = answer;
+      return answer as string[];
     } else if (block.type === "consent") {
       if (typeof answer !== "boolean") throw new InputError("Consent must be true or false.");
-      answers[block.id] = answer;
+      return answer;
     } else if (block.type === "number" || block.type === "rating") {
       if ((typeof answer !== "number" && typeof answer !== "string") || (typeof answer === "string" && !/^-?(?:\d+\.?\d*|\.\d+)$/.test(answer))) throw new InputError(`Enter a valid number for ${block.label}.`);
       const numeric = Number(answer);
       if (!Number.isFinite(numeric) || (block.min !== undefined && numeric < block.min) || (block.max !== undefined && numeric > block.max) || (block.type === "rating" && !Number.isInteger(numeric))) throw new InputError(`Number is outside the allowed range for ${block.label}.`);
-      answers[block.id] = numeric;
+      return numeric;
     } else {
       if (typeof answer !== "string" || answer.length > (block.type === "long_text" ? 10000 : 2000)) throw new InputError("Use text within the answer length limit.");
       const cleaned = answer.trim();
       if (isChoice(block.type) && !block.options?.includes(cleaned)) throw new InputError("Choose a valid option.");
       if (block.type === "email" && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleaned) || cleaned.length > 254)) throw new InputError("Enter a valid email address.");
       if (block.type === "date" && (!/^\d{4}-\d{2}-\d{2}$/.test(cleaned) || !Number.isFinite(Date.parse(cleaned)) || new Date(cleaned).toISOString().slice(0, 10) !== cleaned)) throw new InputError("Enter a valid calendar date.");
-      answers[block.id] = cleaned;
+      return cleaned;
     }
+}
+// The public form and the API use the same per-field validation rules.
+export function answerErrors(value: Answers, schema: FormSchema): Record<string, string> {
+  const errors: Record<string, string> = {};
+  for (const block of blocksOf(schema).filter(block => !isContent(block))) {
+    try { parseAnswer(value[block.id], block); }
+    catch (cause) { if (!(cause instanceof InputError)) throw cause; errors[block.id] = cause.message; }
   }
-  return answers;
+  return errors;
+}
+export function parseAnswers(value: unknown, schema: FormSchema): Answers {
+  if (!isRecord(value)) throw new InputError("Answers must be an object.");
+  const fields = blocksOf(schema).filter(block => !isContent(block));
+  exactKeys(value, fields.map(block => block.id));
+  return Object.fromEntries(fields.map(block => [block.id, parseAnswer(value[block.id], block)]));
 }
 export function answerText(value: Answer | undefined): string { return Array.isArray(value) ? value.join("; ") : value === undefined ? "" : String(value); }

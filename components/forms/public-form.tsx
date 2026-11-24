@@ -22,7 +22,7 @@ export function PublicForm({ id }: { id: string }) {
     catch (cause) { setError(cause instanceof Error ? cause.message : "Could not submit. Please try again."); }
     finally { setBusy(false); }
   }
-  return <div className="fold-public"><header className="fold-public-header"><span className="fold-brand">Fold</span></header><main className="fold-public-sheet">
+  return <div className="fold-public fold-form-surface" data-form-appearance={schema?.appearance ?? "classic"}><header className="fold-public-header"><span className="fold-brand">Fold</span></header><main className="fold-public-sheet">
     {loading ? <Loading /> : success && schema ? <FormConfirmation schema={schema} /> : schema ? <FormBody schema={schema} answers={answers} onChange={setAnswers} onSubmit={submit} busy={busy} error={error} /> : <div className="py-12"><h1>Form unavailable</h1><div className="mt-6"><ErrorNotice message={error || "This form is not accepting responses."} /></div></div>}
     <p className="mt-auto pt-20 text-xs text-muted-foreground">Made with Fold</p>
   </main></div>;
