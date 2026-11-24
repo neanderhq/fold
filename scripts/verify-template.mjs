@@ -66,7 +66,17 @@ async function main() {
     await page.goto(`${origin.origin}/forms/${FORM}`);
     await page.getByLabel('Form title', { exact: true }).waitFor();
     assert.equal(await page.getByLabel('Form title', { exact: true }).inputValue(), 'Customer feedback');
-    if (capture) await page.screenshot({ path: join(capture, 'screenshots/editor.png') });
+    if (capture) {
+      await page.screenshot({ path: join(capture, 'screenshots/editor.png'), animations: 'disabled' });
+      await page.getByRole('button', { name: 'Add block', exact: true }).click();
+      await page.getByRole('dialog', { name: 'Add a block', exact: true }).waitFor();
+      await page.screenshot({ path: join(capture, 'screenshots/add-block.png'), animations: 'disabled' });
+      await page.getByRole('button', { name: 'Close', exact: true }).click();
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      await page.getByRole('dialog', { name: 'Share your form', exact: true }).waitFor();
+      await page.screenshot({ path: join(capture, 'screenshots/share.png'), animations: 'disabled' });
+      await page.getByRole('button', { name: 'Close', exact: true }).click();
+    }
     await page.goto(`${origin.origin}/forms/${FORM}/responses`);
     await page.getByRole('heading', { name: 'Responses', exact: true }).waitFor();
     await page.getByRole('region', { name: 'Response list', exact: true }).getByRole('button').first().waitFor();
@@ -91,6 +101,7 @@ async function main() {
     const browserEnvironment = { ...process.env, PLAYWRIGHT_MODULE: 'playwright' };
     await run(process.execPath, ['scripts/test-builder-browser.cjs'], { env: browserEnvironment });
     await run(process.execPath, ['scripts/test-response-navigation-browser.cjs'], { env: browserEnvironment });
+    await run(process.execPath, ['scripts/test-editor-browser.cjs'], { env: browserEnvironment });
     console.log('PASS: built Fold image, fictional seeded owner/forms/responses, repeat seed preservation, persistent edit after restart, live API and desktop/mobile browser suites');
   } finally {
     await browser?.close(); if (connected) await db.end();
