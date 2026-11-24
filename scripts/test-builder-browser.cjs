@@ -56,6 +56,7 @@ async function create(page, title) {
   activePage = page;
   const start = performance.now();
   await page.getByRole('button', { name: 'New form', exact: true }).click();
+  await page.getByRole('button', { name: /^Blank form/ }).click();
   await page.getByLabel('Form title', { exact: true }).waitFor();
   report.timings.push({ operation: 'New form', ms: Math.round(performance.now() - start) });
   const id = new URL(page.url()).pathname.split('/')[2];
@@ -65,6 +66,10 @@ async function create(page, title) {
 }
 async function choose(page, label, option) {
   if (typeof page.goto === 'function') activePage = page;
+  if (label.startsWith('Type of block ')) {
+    const settings = page.locator('.fold-question').nth(Number(label.split(' ').at(-1)) - 1).locator('details');
+    if (await settings.getAttribute('open') === null) await settings.locator('summary').click();
+  }
   await page.getByRole('combobox', { name: label, exact: true }).click();
   await page.getByRole('option', { name: option, exact: true }).click();
 }
@@ -121,7 +126,8 @@ async function answerFields(page, schema, prefix = '') {
       await authenticate(owner, owners[0], size.name === 'desktop');
       await authenticate(other, owners[1], size.name === 'desktop');
       const formId = await create(owner, `Synthetic all-fields ${size.name}`);
-      const originalQuestionId = (await api(owner, `/api/forms/${formId}`)).data.draft.question.id;
+      const initialDraft = (await api(owner, `/api/forms/${formId}`)).data.draft;
+      const originalQuestionId = (initialDraft.blocks || [initialDraft.question])[0].id;
       await choose(owner, 'Type of block 1', 'Long text');
       await choose(owner, 'Type of block 1', 'Short text');
       await owner.getByRole('switch', { name: 'Required question', exact: true }).click();
@@ -163,9 +169,9 @@ async function answerFields(page, schema, prefix = '') {
       for (const type of types) {
         await owner.getByRole('button', { name: 'Add block', exact: true }).click();
         await owner.getByRole('dialog', { name: 'Add a block', exact: true }).getByRole('button', { name: type, exact: true }).click();
-        const card = owner.locator('.fold-question-settings');
+        const card = owner.locator('.fold-question.is-selected');
         await card.getByLabel(type === 'Heading' || type === 'Description' ? 'Content' : 'Question', { exact: true }).fill(`${type} question`);
-        if (['Single choice', 'Multiple choice', 'Dropdown'].includes(type)) await card.getByLabel('Options (one per line)', { exact: true }).fill(`${type} first\n${type} second`);
+        if (['Single choice', 'Multiple choice', 'Dropdown'].includes(type)) { await card.getByLabel('Option 1', { exact: true }).fill(`${type} first`); await card.getByLabel('Option 2', { exact: true }).fill(`${type} second`); }
       }
       await owner.getByLabel('Form description', { exact: true }).fill('Synthetic customer feedback. No real customer data.');
       await owner.getByRole('tab', { name: 'Settings', exact: true }).click();
@@ -187,7 +193,8 @@ async function answerFields(page, schema, prefix = '') {
       await owner.getByLabel('Form title', { exact: true }).waitFor();
       await owner.locator('.fold-question-row').nth(5).click();
       const choiceCard = owner.locator('.fold-question-settings');
-      await choiceCard.getByLabel('Options (one per line)', { exact: true }).fill('Only option\n');
+      await choiceCard.getByLabel('Option 1', { exact: true }).fill('Only option');
+      await choiceCard.getByLabel('Option 2', { exact: true }).fill('');
       await builderView(owner, 'Preview');
       await owner.getByRole('button', { name: 'Desktop', exact: true }).click();
       await owner.getByRole('region', { name: 'Draft preview', exact: true }).getByText('Option is required (maximum 200 characters).', { exact: true }).waitFor();

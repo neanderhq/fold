@@ -17,6 +17,7 @@ import { BlockPicker } from "./block-picker";
 import { QuestionCard } from "./question-card";
 import { ShareDialog } from "./share-dialog";
 import { sameDraft, useFormDraft } from "./use-form-draft";
+import { AppearancePicker } from "./appearance-picker";
 
 export function Editor({ id }: { id: string }) {
   const { form, setForm, draft, updateDraft, dirty, saving, save, saveError, loadError, issue, validatedDraft, confirmLeave } = useFormDraft(id);
@@ -114,6 +115,7 @@ export function Editor({ id }: { id: string }) {
             </TabsContent>
             <TabsContent value="settings" className="fold-form-settings">
               <div><h2>Make it yours</h2><p className="text-sm text-muted-foreground">Set the finishing touches for this form.</p></div>
+              <AppearancePicker value={draft.appearance} disabled={busy} onChange={appearance => edit({ ...draft, appearance })} />
               <div className="space-y-2"><Label htmlFor="logo">Logo URL (HTTPS)</Label><Input id="logo" type="url" disabled={busy} value={draft.logoUrl ?? ""} placeholder="https://example.com/logo.png" onChange={event => edit({ ...draft, logoUrl: event.target.value })} /><p className="text-xs text-muted-foreground">Use a trusted hosted image. The image host can see visitors’ IP addresses. Fold sends no referrer and doesn’t fetch the image on its server.</p></div>
               <div className="space-y-2"><Label htmlFor="confirmation">Confirmation message</Label><Textarea id="confirmation" maxLength={2000} disabled={busy} value={draft.confirmation ?? ""} placeholder="Your response has been saved." onChange={event => edit({ ...draft, confirmation: event.target.value })} /><p className="text-xs text-muted-foreground">Shown after a successful submission. Try it in the preview.</p></div>
             </TabsContent>
@@ -122,7 +124,7 @@ export function Editor({ id }: { id: string }) {
         <section aria-label="Draft preview" className="fold-preview-pane">
           <div className="fold-preview-toolbar"><div><p className="fold-editor-eyebrow">Respondent view</p><h2 className="text-xl">Live preview</h2></div><div className="fold-device-switch" role="group" aria-label="Preview device"><Button size="sm" variant={preview === "desktop" ? "secondary" : "ghost"} aria-pressed={preview === "desktop"} onClick={() => setPreview("desktop")}><Monitor />Desktop</Button><Button size="sm" variant={preview === "mobile" ? "secondary" : "ghost"} aria-pressed={preview === "mobile"} onClick={() => setPreview("mobile")}><Smartphone />Mobile</Button></div></div>
           <p className="fold-preview-caption">Try your draft here. Test submissions never enter your responses.</p>
-          <div className={`fold-preview-sheet ${preview === "mobile" ? "is-mobile" : ""}`}>
+          <div className={`fold-preview-sheet fold-form-surface ${preview === "mobile" ? "is-mobile" : ""}`} data-form-appearance={draft.appearance ?? "classic"}>
             {previewState?.schema ? previewSuccess ? <><FormConfirmation schema={previewState.schema} preview /><Button variant="outline" onClick={() => { setPreviewSuccess(false); setPreviewNotice(""); }}>Back to form</Button></> : <FormBody schema={previewState.schema} answers={previewAnswers} onChange={setPreviewAnswers} preview error={previewNotice} onSubmit={event => { event.preventDefault(); try { parseAnswers(previewAnswers, previewState.schema!); setPreviewNotice(""); setPreviewSuccess(true); } catch (cause) { setPreviewNotice(cause instanceof Error ? cause.message : "Invalid preview."); } }} /> : <ErrorNotice message={previewState?.error || "Fix the draft configuration to preview this form."} />}
           </div>
         </section>

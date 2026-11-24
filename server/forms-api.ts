@@ -1,6 +1,8 @@
 import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { isRecord, parseSchema, validId } from "@/lib/form-schema";
 import { responseCsv } from "@/lib/response-csv";
+import { starterDraft } from "@/lib/form-starters";
+import { responseSummaries } from "./response-summary";
 import { getDb } from "./db";
 import { forms, responses } from "./schema";
 import { ensureWorkspace, requireOwner } from "./owner";
@@ -38,8 +40,8 @@ export function formsApi(request: Request, path: string[]) {
       }
       if (request.method !== "POST") throw new HttpError(405, "Method not allowed.");
       const body = await readJson(request);
-      if (!isRecord(body) || Object.keys(body).length) throw new HttpError(400, "New forms do not accept supplied IDs or owner fields.");
-      const [form] = await db.insert(forms).values({ workspaceId: workspace.id, draft: { title: "Untitled form", question: { id: crypto.randomUUID(), type: "short_text", label: "Your question", required: true } } }).returning();
+      if (!isRecord(body) || Object.keys(body).some(key => key !== "starter") || (body.starter !== undefined && typeof body.starter !== "string")) throw new HttpError(400, "Supply only a starter form name.");
+      const [form] = await db.insert(forms).values({ workspaceId: workspace.id, draft: starterDraft(body.starter as string | undefined) }).returning();
       return json(form, 201);
     }
     const [formId, action, responseId] = path;
@@ -49,6 +51,7 @@ export function formsApi(request: Request, path: string[]) {
       const [form] = await db.select().from(forms).where(owned);
       if (!form) throw new HttpError(404, "Form not found.");
       if (path.length === 1) return json(form);
+      if (action === "summary" && path.length === 2) return json(await responseSummaries(db, and(eq(responses.formId, formId), ...responseFilters(new URL(request.url)))));
       if ((action === "responses" && path.length <= 3) || (action === "export" && path.length === 2)) {
         if (responseId && !validId(responseId)) throw new HttpError(404, "Response not found.");
         const url = new URL(request.url);
