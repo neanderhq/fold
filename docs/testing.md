@@ -48,3 +48,13 @@ suppressing them. Do not replace application checks with boilerplate assertions.
 Input/ownership scenarios use separate fictional client IPs so unrelated test
 actors do not share the production sign-up limit. The recovery integration suite
 separately verifies rate-limit rejection, persistence and concurrent requests.
+
+## Editor workflow regressions
+
+`scripts/test-editor-browser.cjs` runs against the actual local built app and an
+explicitly disposable database. It checks autosave/reload, spaces while typing,
+new edits during a pending successful save, an HTTP 503 save/retry fixture,
+unsaved-navigation confirmation, question picker/duplication/real dragging,
+explicit publication and desktop/tablet/mobile layouts. It creates and removes
+only its fictional owner. The existing all-field, ownership, iframe, historical
+response, filtering/export and mobile suites still run through production checks.

@@ -14,7 +14,9 @@ same workflow. You can run and modify the source independently under MIT.
 - Email/password login and one private workspace per owner.
 - Short/long text, email, number, date, single/multiple choice, dropdown, rating
   and consent questions, plus heading/description blocks and draft previews.
-- Save draft, publish/republish, unpublish, duplicate, rename, archive and restore.
+- Automatic draft saving, explicit publish/republish, unpublish, duplicate, rename,
+  archive and restore. Add questions with a picker; duplicate and drag blocks, or
+  reorder with keyboard-accessible arrow buttons.
 - Public forms and iframe embeds; private response lists/details, filtering,
   pagination and CSV export. Responses retain the schema used at submission.
 - PostgreSQL migrations, fictional sample forms/responses and isolated tests.

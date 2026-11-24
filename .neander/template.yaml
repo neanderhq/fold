@@ -11,7 +11,7 @@ category: Forms & Surveys
 best_for: Individuals collecting feedback, enquiries and event registrations
 features:
   - Twelve question and content block types
-  - Draft editing and explicit publish or unpublish
+  - Autosaved drafts and explicit publish or unpublish
   - Shareable public forms and iframe embeds
   - Response search, date filters and pagination
   - Historical answer snapshots and CSV export
@@ -24,6 +24,8 @@ included:
 thumbnail: .neander/thumbnail.png
 screenshots:
   - .neander/screenshots/editor.png
+  - .neander/screenshots/add-block.png
+  - .neander/screenshots/share.png
   - .neander/screenshots/responses.png
   - .neander/screenshots/public-form.png
 commands:

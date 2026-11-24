@@ -76,11 +76,11 @@ async function builderView(page, view) {
 }
 async function save(page) {
   activePage = page;
-  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
-  await page.getByText('Draft saved. Your live form hasn’t changed.', { exact: true }).waitFor();
+  await page.getByRole('status', { name: 'Draft save status', exact: true }).getByText('All changes saved', { exact: true }).waitFor();
 }
 async function publish(page) {
   activePage = page;
+  await save(page);
   await page.getByRole('button', { name: /^(Publish|Republish)$/ }).click();
   await page.getByText('Published. Your link is ready to share.', { exact: true }).waitFor();
 }
@@ -161,16 +161,18 @@ async function answerFields(page, schema, prefix = '') {
       activePage = owner;
       const types = ['Long text', 'Email', 'Number', 'Date', 'Single choice', 'Multiple choice', 'Dropdown', 'Rating', 'Consent', 'Heading', 'Description'];
       for (const type of types) {
-        await choose(owner, 'Block type', type);
         await owner.getByRole('button', { name: 'Add block', exact: true }).click();
+        await owner.getByRole('dialog', { name: 'Add a block', exact: true }).getByRole('button', { name: type, exact: true }).click();
         const card = owner.locator('.fold-question-settings');
         await card.getByLabel(type === 'Heading' || type === 'Description' ? 'Content' : 'Question', { exact: true }).fill(`${type} question`);
         if (['Single choice', 'Multiple choice', 'Dropdown'].includes(type)) await card.getByLabel('Options (one per line)', { exact: true }).fill(`${type} first\n${type} second`);
       }
       await owner.getByLabel('Form description', { exact: true }).fill('Synthetic customer feedback. No real customer data.');
+      await owner.getByRole('tab', { name: 'Settings', exact: true }).click();
       await owner.getByLabel('Confirmation message', { exact: true }).fill('Thanks, synthetic customer!');
       await owner.getByLabel('Logo URL (HTTPS)', { exact: true }).fill('https://fold-assets.example.invalid/logo.svg');
       await save(owner);
+      await owner.getByRole('tab', { name: /^Questions/ }).click();
       let form = (await api(owner, `/api/forms/${formId}`)).data;
       assert.equal(form.draft.blocks.length, 12);
       assert.equal(form.draft.blocks[0].id, originalQuestionId);
@@ -192,15 +194,16 @@ async function answerFields(page, schema, prefix = '') {
       await builderView(owner, 'Edit');
       await owner.getByRole('button', { name: 'Save draft', exact: true }).click();
       await owner.getByText('Option is required (maximum 200 characters).', { exact: true }).first().waitFor();
+      owner.once('dialog', dialog => dialog.accept());
       await owner.reload(); await owner.getByLabel('Form title', { exact: true }).waitFor();
       passed(`${size.name}: invalid choice draft shows preview/save validation without rendering crash`);
       for (const mode of ['Desktop', 'Mobile']) {
         activePage = owner;
-        await owner.getByLabel('Form title', { exact: true }).fill(`Unsaved preview ${size.name} ${mode}`);
+        await owner.getByLabel('Form title', { exact: true }).fill(`Draft preview ${size.name} ${mode}`);
         await builderView(owner, 'Preview');
         await owner.getByRole('button', { name: mode, exact: true }).click();
         const previewRegion = owner.getByRole('region', { name: 'Draft preview', exact: true });
-        await previewRegion.getByRole('heading', { name: `Unsaved preview ${size.name} ${mode}`, exact: true }).waitFor();
+        await previewRegion.getByRole('heading', { name: `Draft preview ${size.name} ${mode}`, exact: true }).waitFor();
         for (const device of ['Desktop', 'Mobile']) assert.equal(await previewRegion.getByRole('button', { name: device, exact: true }).isVisible(), true);
         await answerFields(owner, form.draft, 'preview-');
         for (const name of ['Save draft', 'Publish', 'Desktop', 'Mobile']) {
@@ -208,8 +211,9 @@ async function answerFields(page, schema, prefix = '') {
           assert.ok(bounds && bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= size.width && bounds.y + bounds.height <= size.height, `${size.name}: ${name} remains in the scrolled viewport`);
         }
         await builderView(owner, 'Edit');
-        assert.equal(await owner.getByLabel('Form title', { exact: true }).inputValue(), `Unsaved preview ${size.name} ${mode}`);
-        assert.equal(await owner.getByRole('button', { name: 'Publish', exact: true }).isDisabled(), true);
+        assert.equal(await owner.getByLabel('Form title', { exact: true }).inputValue(), `Draft preview ${size.name} ${mode}`);
+        await save(owner);
+        assert.equal((await api(owner, `/api/public/forms/${formId}`)).status, 404, 'Autosaving preview edits must not publish a form');
         await builderView(owner, 'Preview');
         assert.equal(await owner.locator(`[id="preview-${originalQuestionId}"]`).inputValue(), '=Synthetic, "customer"');
         await owner.getByRole('button', { name: 'Test submission', exact: true }).click();
@@ -217,10 +221,12 @@ async function answerFields(page, schema, prefix = '') {
         await previewRegion.getByRole('status').getByText('Thanks, synthetic customer!', { exact: true }).waitFor();
         assert.deepEqual(previewPosts, []);
         assert.equal((await api(owner, `/api/forms/${formId}/responses?page=1`)).data.total, 0);
-        assert.deepEqual((await api(owner, `/api/forms/${formId}`)).data.draft, form.draft);
-        passed(`${size.name}: ${mode} unsaved preview preserves draft/answers, validates with zero public POSTs and unchanged response count`);
+        assert.deepEqual((await api(owner, `/api/forms/${formId}`)).data.draft, { ...form.draft, title: `Draft preview ${size.name} ${mode}` });
+        passed(`${size.name}: ${mode} autosaved preview preserves draft/answers, validates with zero public POSTs and unchanged response count`);
         await shot(owner, `${size.name}-preview-${mode.toLowerCase()}`);
         await builderView(owner, 'Edit');
+        await owner.getByLabel('Form title', { exact: true }).fill(form.draft.title);
+        await save(owner);
         await owner.reload(); await owner.getByLabel('Form title', { exact: true }).waitFor();
       }
       await publish(owner);

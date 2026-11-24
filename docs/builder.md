@@ -4,7 +4,7 @@ See [development](development.md) and [testing](testing.md) for setup and verifi
 
 ## Build forms
 
-Owners can add, edit, delete and move blocks with keyboard-accessible up/down controls. Every block has a stable UUID; moving or editing preserves it, deleting and adding creates a new one. Supported questions: short text (2,000 characters), long text (10,000), email (254), number (finite decimals with optional minimum/maximum), date (real YYYY-MM-DD calendar dates), single choice, multiple choice, dropdown, integer rating (1 through configurable 2–10), and boolean consent. Heading and description blocks do not accept answers. Question help text, form description, title and confirmation message are editable.
+Owners can add blocks from the question-type picker, duplicate, edit, delete and drag them, or move them with keyboard-accessible up/down controls. A duplicated block gets a fresh ID and preserves its settings. Every block has a stable UUID; moving or editing preserves it, deleting and adding creates a new one. Supported questions: short text (2,000 characters), long text (10,000), email (254), number (finite decimals with optional minimum/maximum), date (real YYYY-MM-DD calendar dates), single choice, multiple choice, dropdown, integer rating (1 through configurable 2–10), and boolean consent. Heading and description blocks do not accept answers. Question help text, form description, title and confirmation message are editable.
 
 Forms support 1–50 blocks and must contain at least one question. Choice questions need 2–50 unique nonempty options, up to 200 characters each. Block labels, help text, form description and confirmation are capped at 2,000 characters; titles at 200. Request JSON is capped at 256 KiB, including the complete schema or answer object. Invalid IDs, unknown keys, duplicate block IDs, invalid field configuration, mismatched answer types, unlisted choices, duplicate selections and missing required answers are rejected server-side. Saving rejects invalid configurations; publishing validates again, including stored invalid configurations. Required consent must be true. Optional unanswered fields are stored as empty text, empty multi-selection or false consent.
 
@@ -14,13 +14,28 @@ Legacy `{title,question:{id,type:"short_text",label,required}}` JSON remains rea
 
 Logo customization uses a trusted, externally hosted **HTTPS image URL**, not uploads. Credential-bearing URLs, non-HTTPS schemes and custom ports are rejected; the URL is at most 2,048 characters. The browser loads the image as an image with `referrerPolicy="no-referrer"`; Fold never fetches it on the server, stores files or exposes private sessions to an image proxy. Image hosts can still see visitors' IP addresses and request metadata, and external images may become unavailable. Choose a host you trust and have permission to use; no availability or tracking protection is promised. No external service is needed when the logo setting is blank.
 
-The Live Split builder keeps compact question rows on the white left editing surface and a live public-renderer preview on the pale-blue right surface. Select a row to expand its settings inline; keyboard-accessible up/down buttons reorder the selected block. Logo and confirmation settings are immediately below the question list. The navy toolbar keeps status, Save draft and Publish/Republish accessible while scrolling. At narrow widths, Edit / Preview switches the single-column view without discarding unsaved edits or preview answers. Desktop and Mobile controls change the preview width.
+The split builder keeps compact question rows on the white editing surface and a
+live public-renderer preview on the pale-blue surface. Select a row to expand its
+settings. Questions and form settings have separate tabs; sharing lives in a
+focused dialog accessible from the toolbar. At narrow widths, Edit / Preview
+switches the single-column view without discarding edits or preview answers.
+Desktop and Mobile controls change the preview width.
+
+Valid drafts save automatically after an 800 ms pause, one request at a time.
+Typing remains enabled during saving; an earlier save receipt cannot overwrite
+newer edits or remove a space while typing. Comparison uses the validated schema,
+so PostgreSQL JSONB key ordering does not trigger repeated saves. Incomplete field
+configurations stay local until valid. The toolbar reports unsaved, saving, saved
+or failed state. A failed save retains edits in the current tab and requires
+**Retry save**; **Save draft** can also save a valid edit immediately. Closing the
+tab or following the workspace/response links warns while edits remain unsaved.
+No persistent offline draft or background retry queue is maintained.
 
 Desktop/mobile draft previews share the actual form body and confirmation components with public forms. Test submissions run entirely in local React state, never call the submission API and never enter response counts. Preview reflects unsaved changes. Block configuration changes reset preview answers. Copy link and Copy embed code report success or a visible clipboard-error fallback with selectable text. Copying a link does not publish the form.
 
 ### Lifecycle and sharing
 
-Save draft does not change the live form. Publish/republish copies a validated saved draft; unsaved changes must be saved first. Unpublish stops public reads and submissions. The dashboard provides rename (draft only), duplicate (new private draft, no responses), archive and restore. Archive unpublishes and retains all responses; restoring does **not** automatically republish. Existing links can be reused after explicitly publishing again.
+Automatic and manual draft saves do not change the live form. Publish/republish copies a validated saved draft; publishing waits for saving to finish. Successful publication opens the Share dialog with the live link and embed code. Unpublish stops public reads and submissions. The dashboard provides rename (draft only), duplicate (new private draft, no responses), archive and restore. Archive unpublishes and retains all responses; restoring does **not** automatically republish. Existing links can be reused after explicitly publishing again.
 
 Public links are `/f/:id`. The editor provides an iframe snippet with `width="100%"` and an adjustable height of 800px. Only the public form page allows framing (`frame-ancestors *`); all other pages and APIs use `frame-ancestors 'none'` and `X-Frame-Options: DENY`. No CORS exception, auth bypass or weakened private-write Origin check was added. Public iframe submissions work without an owner session. Public pages can be embedded by any site, so only publish content intended to be public. Browser local-network policies can block a remote page framing the localhost preview; the local browser suite grants its test embedding origin local-network permission, not an application permission or production bypass. Verify embedding against your own deployment before relying on it.
 
