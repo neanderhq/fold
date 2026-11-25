@@ -144,6 +144,9 @@
 .fold-drag-handle:active { cursor: grabbing; }
 .fold-drag-handle:focus-visible { outline: 2px solid var(--ring); outline-offset: -3px; border-radius: 6px; }
 .fold-question.is-drop-target { outline: 2px dashed var(--primary); outline-offset: 3px; }
+.fold-page-break { padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--muted); color: var(--muted-foreground); font-size: 12px; font-weight: 600; }
+.fold-page-progress { width: fit-content; color: var(--muted-foreground); font-size: 14px; font-weight: 600; }
+.fold-page-progress:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
 .fold-add-block { width: 100%; min-height: 48px; border-style: dashed; color: var(--primary); }
 .fold-block-help { padding-top: 2px; color: var(--muted-foreground); font-size: 12px; text-align: center; line-height: 1.6; }
 .fold-form-settings { display: grid; gap: 28px; padding-top: 24px; }

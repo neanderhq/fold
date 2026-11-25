@@ -23,6 +23,7 @@ export function QuestionCard(props: Props) {
   return <section className={`fold-question ${expanded ? "is-selected" : ""} ${props.dropTarget ? "is-drop-target" : ""}`} data-block-id={block.id}
     onDragOver={event => { if (props.onDragOver()) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } }}
     onDrop={event => { event.preventDefault(); props.onDrop(); }}>
+    {block.startsPage && <div className="fold-page-break">New page</div>}
     <div className="fold-question-heading">
       <button type="button" className="fold-drag-handle" draggable={!disabled} disabled={disabled} aria-label={`Drag block ${index + 1} to reorder`} aria-describedby="fold-reorder-help"
         onDragStart={event => { event.dataTransfer.setData("text/plain", block.id); event.dataTransfer.effectAllowed = "move"; props.onDragStart(); }} onDragEnd={props.onDragEnd}><GripVertical className="size-4" aria-hidden="true" /></button>
@@ -41,10 +42,11 @@ export function QuestionCard(props: Props) {
       </div></div>
       {isChoice(block.type) && <div className="space-y-2">{block.options?.map((option, position) => <div key={position} className="fold-option-row"><span aria-hidden="true">{String.fromCharCode(65 + position)}</span><Label htmlFor={`option-${block.id}-${position}`} className="sr-only">Option {position + 1}</Label><Input id={`option-${block.id}-${position}`} value={option} maxLength={200} disabled={disabled} onChange={event => update({ options: block.options!.map((value, item) => item === position ? event.target.value : value) })} /><Button type="button" size="icon-sm" variant="ghost" aria-label={`Remove option ${position + 1}`} disabled={disabled || (block.options?.length ?? 0) <= 2} onClick={() => update({ options: block.options!.filter((_, item) => item !== position) })}><X /></Button></div>)}<Button type="button" size="sm" variant="ghost" disabled={disabled || (block.options?.length ?? 0) >= 50} onClick={() => update({ options: [...block.options!, `Option ${(block.options?.length ?? 0) + 1}`] })}><Plus />Add option</Button></div>}
       {!isContent(block) && <div className="flex items-center justify-between gap-4"><Label htmlFor={index === 0 ? "required" : `required-${block.id}`}>Required question</Label><Switch id={index === 0 ? "required" : `required-${block.id}`} checked={block.required} disabled={disabled} onCheckedChange={required => update({ required })} /></div>}
+      {index > 0 && <div className="flex items-center justify-between gap-4"><Label htmlFor={`new-page-${block.id}`}>Start a new page here</Label><Switch id={`new-page-${block.id}`} checked={Boolean(block.startsPage)} disabled={disabled} onCheckedChange={enabled => update({ startsPage: enabled ? true : undefined })} /></div>}
       <details className="fold-question-more"><summary>Question settings</summary><div className="space-y-4 pt-4">
         <ChoiceSelect label={`Type of block ${index + 1}`} value={typeLabels[block.type]} options={fieldTypes.map(type => typeLabels[type])} disabled={disabled} onChange={value => {
           const type = fieldTypes.find(item => typeLabels[item] === value)!;
-          props.onChange({ id: block.id, type, label: block.label, required: !["heading", "description"].includes(type) && block.required, description: block.description,
+          props.onChange({ id: block.id, type, label: block.label, required: !["heading", "description"].includes(type) && block.required, description: block.description, startsPage: block.startsPage,
             ...(isChoice(type) ? { options: block.options ?? ["Option 1", "Option 2"] } : {}), ...(type === "rating" ? { min: 1, max: 5 } : {}) });
         }} />
         {!isContent(block) && <div className="space-y-2"><Label htmlFor={`description-${block.id}`}>Help text</Label><Textarea id={`description-${block.id}`} value={block.description ?? ""} disabled={disabled} maxLength={2000} onChange={event => update({ description: event.target.value })} /></div>}

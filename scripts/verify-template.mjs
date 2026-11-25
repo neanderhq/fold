@@ -117,6 +117,7 @@ async function main() {
     await run(process.execPath, ['scripts/test-response-navigation-browser.cjs'], { env: browserEnvironment });
     await run(process.execPath, ['scripts/test-editor-browser.cjs'], { env: browserEnvironment });
     await run(process.execPath, ['scripts/test-product-polish-browser.cjs'], { env: browserEnvironment });
+    await run(process.execPath, ['scripts/test-multi-page-browser.cjs'], { env: browserEnvironment });
     console.log('PASS: built Fold image, fictional seeded owner/forms/responses, repeat seed preservation, persistent edit after restart, live API and desktop/mobile browser suites');
   } finally {
     await browser?.close(); if (connected) await db.end();

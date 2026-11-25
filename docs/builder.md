@@ -8,7 +8,9 @@ Owners can add blocks from the question-type picker, duplicate, edit, delete and
 
 Forms support 1–50 blocks and must contain at least one question. Choice questions need 2–50 unique nonempty options, up to 200 characters each. Block labels, help text, form description and confirmation are capped at 2,000 characters; titles at 200. Request JSON is capped at 256 KiB, including the complete schema or answer object. Invalid IDs, unknown keys, duplicate block IDs, invalid field configuration, mismatched answer types, unlisted choices, duplicate selections and missing required answers are rejected server-side. Saving rejects invalid configurations; publishing validates again, including stored invalid configurations. Required consent must be true. Optional unanswered fields are stored as empty text, empty multi-selection or false consent.
 
-Legacy `{title,question:{id,type:"short_text",label,required}}` JSON remains readable and submittable, including historical snapshots. New multi-block schemas use `{title,blocks:[{id,type,label,required,...}],description?,logoUrl?,confirmation?}`. Editing an old form in the builder may upgrade its draft to `blocks`; its live schema changes only upon republish. There is no bulk data rewrite.
+In any block after the first, turn on **Start a new page here** to split the form before that block. The split moves with its block, and moving that block to the start removes the redundant split. Duplicating a block keeps the copy on the same page. Preview and public forms display page progress and retain answers when going back. Next validates the current page; Submit validates and sends the complete form. Answer state is held while the form is open.
+
+Legacy `{title,question:{id,type:"short_text",label,required}}` JSON remains readable and submittable, including historical snapshots. New multi-block schemas use `{title,blocks:[{id,type,label,required,...}],description?,logoUrl?,confirmation?}`. A later block can include `startsPage: true`. Editing an old form in the builder may upgrade its draft to `blocks`; its live schema changes only upon republish. There is no bulk data rewrite.
 
 ### Settings and safe logos
 

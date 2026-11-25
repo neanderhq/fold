@@ -7,7 +7,7 @@ registerHooks({ resolve(specifier, context, nextResolve) {
   if (specifier.startsWith(".") && context.parentURL?.includes("/lib/") && !specifier.endsWith(".ts")) return nextResolve(new URL(`${specifier}.ts`, context.parentURL).href, context);
   return nextResolve(specifier, context);
 } });
-const { parseSchema, parseAnswers, answerErrors, blocksOf, fieldTypes, appearances } = await import("../lib/form-schema.ts");
+const { parseSchema, parseAnswers, answerErrors, blocksOf, pagesOf, fieldTypes, appearances } = await import("../lib/form-schema.ts");
 const { csvCell, responseCsv } = await import("../lib/response-csv.ts");
 const { formStarters, starterDraft } = await import("../lib/form-starters.ts");
 const { summarizeAnswerCounts } = await import("../lib/response-summary.ts");
@@ -43,6 +43,22 @@ test("legacy JSON, stable IDs and unchanged snapshot support", () => {
   assert.deepEqual(blocksOf(legacy), [question]);
   assert.throws(() => parseSchema({ ...legacy, question: { ...question, id: randomUUID() } }, question.id));
   assert.deepEqual(parseAnswers({ [question.id]: "Original" }, legacy), { [question.id]: "Original" });
+});
+test("page breaks preserve block IDs and whole-form validation", () => {
+  const name = field("short_text");
+  const heading = field("heading", { startsPage: true, required: false });
+  const email = field("email");
+  const form = parseSchema({ title: "Workshop", blocks: [name, heading, email] });
+  assert.deepEqual(pagesOf(form), [[name], [heading, email]]);
+  assert.deepEqual(pagesOf({ title: "Legacy", question: name }), [[name]]);
+  const firstPageAnswers = { [name.id]: "Alex" };
+  assert.deepEqual(answerErrors(firstPageAnswers, form, pagesOf(form)[0]), {});
+  assert.throws(() => parseAnswers(firstPageAnswers, form));
+  assert.throws(() => parseSchema({ ...form, blocks: [{ ...name, startsPage: true }, email] }), /after the first/);
+  assert.throws(() => parseSchema({ ...form, blocks: [name, { ...email, startsPage: "true" }] }), /Start a new page/);
+  assert.deepEqual(parseAnswers({ ...firstPageAnswers, [email.id]: "alex@example.invalid" }, form), {
+    ...firstPageAnswers, [email.id]: "alex@example.invalid",
+  });
 });
 test("all block types, unique IDs, content-only/configuration rejection", () => {
   const blocks = fieldTypes.map((type) => field(type, { required: !["heading", "description"].includes(type), ...(["single_choice", "multi_choice", "dropdown"].includes(type) ? { options: ["One", "Two"] } : {}) }));
