@@ -16,7 +16,7 @@ import { ResponseRow } from "./response-row";
 
 type ResponsePage = { records: SavedResponse[]; total: number; page: number; pageSize: number };
 
-export function Responses({ id }: { id: string }) {
+export function Responses({ id, initialResponseId }: { id: string; initialResponseId?: string }) {
   const [result, setResult] = useState<ResponsePage>({ records: [], total: 0, page: 1, pageSize: 20 });
   const [selected, setSelected] = useState<SavedResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,6 +29,7 @@ export function Responses({ id }: { id: string }) {
   const [view, setView] = useState("responses");
   const detailHeading = useRef<HTMLHeadingElement>(null);
   const selectionRequest = useRef(0);
+  const openedInitial = useRef(false);
   useEffect(() => {
     if (!selected || !window.matchMedia("(width < 48rem)").matches) return;
     detailHeading.current?.focus({ preventScroll: true });
@@ -40,6 +41,13 @@ export function Responses({ id }: { id: string }) {
     Promise.all([api<ResponsePage>(`/api/forms/${id}/responses?${query}`), api<ResponsePage>(`/api/forms/${id}/responses?page=1`)]).then(([data, unfiltered]) => { if (active) { setResult(data); setUnfilteredTotal(unfiltered.total); } }).catch((cause) => { if (active) setError(cause.message); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; selectionRequest.current++; };
   }, [id, query]);
+  useEffect(() => {
+    if (!loading && initialResponseId && !openedInitial.current) {
+      openedInitial.current = true;
+      void open(initialResponseId);
+    }
+  }, [loading, initialResponseId]);
+
   function filter(page: number) { setQuery(new URLSearchParams({ page: String(page), q: search, from, to }).toString()); }
   function clearFilters() { setSearch(""); setFrom(""); setTo(""); setQuery("page=1"); }
   async function open(responseId: string) {
@@ -59,7 +67,7 @@ export function Responses({ id }: { id: string }) {
       const anchor = document.createElement("a"); anchor.href = url; anchor.download = `fold-${id}.csv`; anchor.click(); URL.revokeObjectURL(url);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Export failed."); }
   }
-  return <OwnerShell navigation={<FormNav id={id} active="responses" />}><Link href="/" className="mb-6 inline-block text-sm hover:underline">← All forms</Link><div className="mb-8 flex flex-wrap items-start justify-between gap-4"><div><h1>Responses</h1><p className="mt-3 text-muted-foreground">Original questions and answers, preserved with every submission.</p></div><Button variant="outline" onClick={exportCsv}>Export CSV</Button></div>
+  return <OwnerShell navigation={<FormNav id={id} active="responses" />}><Link href="/" className="mb-6 inline-block text-sm hover:underline">← All forms</Link><div className="mb-8 flex flex-wrap items-start justify-between gap-4"><div><h1>Responses</h1><p className="mt-3 text-muted-foreground">Original questions and answers, preserved with every submission.</p></div><div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link href={`/forms/${id}/integrations`}>Integrations</Link></Button><Button variant="outline" onClick={exportCsv}>Export CSV</Button></div></div>
     <form className="mb-8 grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-4" onSubmit={(event) => { event.preventDefault(); filter(1); }}><div className="space-y-2"><Label htmlFor="search">Search responses</Label><Input id="search" value={search} maxLength={200} onChange={(event) => setSearch(event.target.value)} placeholder="Answers or historical labels" /></div><div className="space-y-2"><Label htmlFor="from">From (UTC)</Label><Input id="from" type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></div><div className="space-y-2"><Label htmlFor="to">To (UTC)</Label><Input id="to" type="date" value={to} onChange={(event) => setTo(event.target.value)} /></div><Button>Apply filters</Button></form>
     {error && <div className="mb-6"><ErrorNotice message={error} /></div>}
     <Tabs value={view} onValueChange={setView}><TabsList aria-label="Response views" className="mb-6"><TabsTrigger value="responses">Responses</TabsTrigger><TabsTrigger value="summary">Summary</TabsTrigger></TabsList><TabsContent value="summary">{view === "summary" && <ResponseSummary id={id} query={query} />}</TabsContent><TabsContent value="responses">

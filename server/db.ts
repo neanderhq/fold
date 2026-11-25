@@ -12,3 +12,5 @@ export function getDb() {
     connectionTimeoutMillis: 10000,
   }), { schema });
 }
+
+export type FoldTransaction = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];

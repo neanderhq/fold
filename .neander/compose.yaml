@@ -69,6 +69,16 @@ x-neander:
       required: false
       source: user
       provider: null
+    - service: web
+      name: RESPONSE_ALERT_FROM
+      required: false
+      source: user
+      provider: null
+    - service: web
+      name: RESPONSE_ALERT_SENDER_VERIFIED
+      required: false
+      source: user
+      provider: null
   probes:
     - path: /api/health
       success_status_range: 2xx

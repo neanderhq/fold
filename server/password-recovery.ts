@@ -1,3 +1,5 @@
+import { sendResendMessage } from "./resend";
+
 type Environment = Record<string, string | undefined>;
 
 export const RESET_CONFIRMATION = "If this email exists in our system, check your email for the reset link";
@@ -76,21 +78,11 @@ export function createResetSender(environment: Environment = process.env, send: 
     if (!configuration.enabled || (configuration.previewRecipient && email.toLowerCase() !== configuration.previewRecipient)) {
       throw new Error("Password recovery delivery unavailable");
     }
-    const response = await send("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${configuration.apiKey}`,
-        "content-type": "application/json",
-        "idempotency-key": `fold-password-reset-${token}`,
-      },
-      body: JSON.stringify({
-        from: configuration.from,
-        to: [email],
-        ...resetEmail(url),
-      }),
-      signal: AbortSignal.timeout(10_000),
-      redirect: "error",
-    });
+    const response = await sendResendMessage(configuration.apiKey, `fold-password-reset-${token}`, {
+      from: configuration.from,
+      to: email,
+      ...resetEmail(url),
+    }, send);
     if (!response.ok) throw new Error("Password recovery delivery unavailable");
   };
 }

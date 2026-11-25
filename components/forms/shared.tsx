@@ -39,7 +39,7 @@ export function OwnerShell({ children, navigation, toolbar, wide = false, confir
   </div>;
 }
 
-export function FormNav({ id, active, confirmLeave }: { id: string; active: "editor" | "responses"; confirmLeave?: () => boolean }) {
+export function FormNav({ id, active, confirmLeave }: { id: string; active: "editor" | "responses" | "integrations"; confirmLeave?: () => boolean }) {
   return <nav aria-label="Form navigation" className="fold-form-nav">
     <Button asChild variant={active === "editor" ? "secondary" : "ghost"}><Link aria-current={active === "editor" ? "page" : undefined} href={`/forms/${id}`}>Editor</Link></Button>
     <Button asChild variant={active === "responses" ? "secondary" : "ghost"}><Link aria-current={active === "responses" ? "page" : undefined} href={`/forms/${id}/responses`} onNavigate={event => { if (confirmLeave && !confirmLeave()) event.preventDefault(); }}>Responses</Link></Button>

@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createResetSender, recoveryConfiguration, RESET_LIFETIME_SECONDS } from "../server/password-recovery.ts";
+import { registerHooks } from "node:module";
+
+registerHooks({ resolve(specifier, context, nextResolve) {
+  if (specifier === "./resend" && context.parentURL?.endsWith("/password-recovery.ts")) {
+    return nextResolve(new URL("./resend.ts", context.parentURL).href, context);
+  }
+  return nextResolve(specifier, context);
+} });
+const { createResetSender, recoveryConfiguration, RESET_LIFETIME_SECONDS } = await import("../server/password-recovery.ts");
 
 const preview = {
   PASSWORD_RESET_ENABLED: "true",
