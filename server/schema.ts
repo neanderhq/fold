@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { boolean, check, index, jsonb, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import type { Answers, FormSchema } from "../lib/form-schema";
-import type { AlertSettings, DeliveryKind, DeliveryStatus } from "../lib/response-delivery";
+import type { AlertSettings, DeliveryKind, DeliveryStatus, SheetsSettings } from "../lib/response-delivery";
 import { user } from "./auth-schema";
 
 export * from "./auth-schema";
@@ -38,6 +38,7 @@ export const responses = pgTable("responses", {
 export const responseSettings = pgTable("response_settings", {
   formId: uuid("form_id").primaryKey().references(() => forms.id, { onDelete: "cascade" }),
   alert: jsonb("alert").$type<AlertSettings>().notNull().default({}),
+  sheets: jsonb("sheets").$type<SheetsSettings>().notNull().default({}),
 });
 
 export const responseDeliveries = pgTable("response_deliveries", {

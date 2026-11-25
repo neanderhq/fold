@@ -3,15 +3,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
-import type { AlertView, DeliveryKind, DeliveryRow } from "@/lib/response-delivery";
+import type { AlertView, DeliveryKind, DeliveryRow, SheetsView } from "@/lib/response-delivery";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SheetsSettings } from "./sheets-settings";
 import { ErrorNotice, FormNav, Loading, OwnerShell } from "./shared";
 
 type DeliverySettingsView = {
   alert: AlertView;
+  sheets: SheetsView;
   recent: DeliveryRow[];
 };
 
@@ -47,7 +49,8 @@ export function DeliverySettings({ id }: { id: string }) {
     </div>
     {error && <div className="mb-5"><ErrorNotice message={error} /></div>}
     {!settings && !error && <Loading />}
-    {alert && <div className="max-w-3xl space-y-6">
+    {alert && <div className="grid items-start gap-6 md:grid-cols-2">
+      <div className="min-w-0 space-y-6">
       <Card className="min-w-0 shadow-none">
         <CardHeader><CardTitle><h2 id="alert-heading">Response alerts</h2></CardTitle></CardHeader>
         <CardContent aria-labelledby="alert-heading" className="space-y-4">
@@ -77,6 +80,12 @@ export function DeliverySettings({ id }: { id: string }) {
         </CardContent>
       </Card>
       <DeliveryActivity id={id} items={settings.recent.filter(row => row.kind === "alert")} kind="alert" busy={busy} onAction={perform} />
+      </div>
+      <div className="min-w-0 space-y-6">
+        <SheetsSettings settings={settings.sheets} busy={busy} onAction={perform} />
+        <DeliveryActivity id={id} items={settings.recent.filter(row => row.kind === "sheets")} kind="sheets" busy={busy} onAction={perform} />
+      </div>
+
     </div>}
   </OwnerShell>;
 }

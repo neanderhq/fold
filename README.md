@@ -18,6 +18,7 @@ same workflow. You can run and modify the source independently under MIT.
   error summary. Preview and public forms use the same controls and answer rules.
 - Multi-page forms with explicit Next and Back controls. Answers stay in place
   while respondents move through the form, and the last page submits them.
+- Conditional follow-up questions based on an earlier choice on the same page.
 - Blank forms or ready-to-edit feedback, workshop and enquiry starters. Each
   starter creates a private draft with fresh question IDs and no responses.
 - Automatic draft saving, explicit publish/republish, unpublish, duplicate, rename,
@@ -30,10 +31,11 @@ same workflow. You can run and modify the source independently under MIT.
   responses, with historical question versions kept separate. Responses retain
   the schema used at submission.
 - PostgreSQL migrations, fictional sample forms/responses and isolated tests.
-- Optional Better Auth password recovery through your own Resend configuration.
+- Optional password recovery, owner-only response alerts and Google Sheets sync.
+  See [delivery setup](docs/response-delivery.md) for provider configuration.
 
-This version does not include shared/team workspaces, file uploads, conditional
-logic, payments or third-party business integrations. External HTTPS logos are
+This version does not include shared/team workspaces, file uploads, payments
+or branching between pages. External HTTPS logos are
 loaded by the browser. Password recovery is disabled until configured with a
 verified sender; template publication does not supply an email provider account.
 

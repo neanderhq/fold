@@ -1,0 +1,1 @@
+ALTER TABLE "response_settings" ADD COLUMN "sheets" jsonb DEFAULT '{}'::jsonb NOT NULL;

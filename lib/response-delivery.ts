@@ -23,3 +23,25 @@ export type AlertView = {
   enabled: boolean;
   awaitingCode: boolean;
 };
+
+export type SheetsField = { id: string; label: string; type: string };
+
+export type SheetsConnection = {
+  spreadsheetId: string;
+  sheetId: number;
+  title: string;
+  fields: SheetsField[];
+};
+
+export type SheetsSettings = {
+  setup?: { code: string; expiresAt: number; spreadsheetId?: string };
+  connection?: SheetsConnection;
+};
+
+export type SheetsView = {
+  serviceEmail: string | null;
+  code: string | null;
+  connection: SheetsConnection | null;
+  publishedFields: SheetsField[];
+  mappingIssue: string | null;
+};
