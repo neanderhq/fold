@@ -16,6 +16,8 @@ same workflow. You can run and modify the source independently under MIT.
   and consent questions, plus heading/description blocks and draft previews.
 - Keyboard-accessible star ratings, choice tiles and inline validation with an
   error summary. Preview and public forms use the same controls and answer rules.
+- Multi-page forms with explicit Next and Back controls. Answers stay in place
+  while respondents move through the form, and the last page submits them.
 - Blank forms or ready-to-edit feedback, workshop and enquiry starters. Each
   starter creates a private draft with fresh question IDs and no responses.
 - Automatic draft saving, explicit publish/republish, unpublish, duplicate, rename,
@@ -30,7 +32,7 @@ same workflow. You can run and modify the source independently under MIT.
 - PostgreSQL migrations, fictional sample forms/responses and isolated tests.
 - Optional Better Auth password recovery through your own Resend configuration.
 
-This version does not include shared/team workspaces, multi-page forms, file uploads, conditional
+This version does not include shared/team workspaces, file uploads, conditional
 logic, payments or third-party business integrations. External HTTPS logos are
 loaded by the browser. Password recovery is disabled until configured with a
 verified sender; template publication does not supply an email provider account.

@@ -1,6 +1,6 @@
 export const fieldTypes = ["short_text", "long_text", "email", "number", "date", "single_choice", "multi_choice", "dropdown", "rating", "consent", "heading", "description"] as const;
 export type FieldType = typeof fieldTypes[number];
-export type FormBlock = { id: string; type: FieldType; label: string; required: boolean; description?: string; options?: string[]; min?: number; max?: number };
+export type FormBlock = { id: string; type: FieldType; label: string; required: boolean; description?: string; options?: string[]; min?: number; max?: number; startsPage?: true };
 export const appearances = ["classic", "paper", "meadow"] as const;
 export type FormSchema = { title: string; question?: FormBlock; blocks?: FormBlock[]; description?: string; logoUrl?: string; confirmation?: string; appearance?: typeof appearances[number] };
 export type Answer = string | string[] | number | boolean;
@@ -14,6 +14,18 @@ export function validId(value: unknown): value is string {
   return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 export function blocksOf(schema: FormSchema): FormBlock[] { return schema.blocks ?? (schema.question ? [schema.question] : []); }
+export function pagesOf(schema: FormSchema): FormBlock[][] {
+  let page: FormBlock[] = [];
+  const pages = [page];
+  for (const block of blocksOf(schema)) {
+    if (block.startsPage && page.length) {
+      page = [];
+      pages.push(page);
+    }
+    page.push(block);
+  }
+  return pages;
+}
 export function isContent(block: FormBlock) { return block.type === "heading" || block.type === "description"; }
 export function isChoice(type: FieldType) { return ["single_choice", "multi_choice", "dropdown"].includes(type); }
 function exactKeys(value: Record<string, unknown>, keys: string[]) {
@@ -38,13 +50,17 @@ export function parseSchema(value: unknown, questionId?: string): FormSchema {
   const source = legacy ? [value.question] : value.blocks;
   if (!Array.isArray(source) || source.length < 1 || source.length > 50) throw new InputError("Use between 1 and 50 blocks.");
   const seen = new Set<string>();
-  const blocks = source.map((raw): FormBlock => {
+  const blocks = source.map((raw, index): FormBlock => {
     if (!isRecord(raw)) throw new InputError("Invalid question.");
-    exactKeys(raw, ["id", "type", "label", "required", "description", "options", "min", "max"]);
+    exactKeys(raw, ["id", "type", "label", "required", "description", "options", "min", "max", "startsPage"]);
     if (!validId(raw.id) || seen.has(raw.id) || (legacy && questionId && raw.id !== questionId)) throw new InputError("Use unique, stable question IDs. The question ID cannot change.");
     seen.add(raw.id);
     if (!fieldTypes.includes(raw.type as FieldType) || typeof raw.required !== "boolean") throw new InputError("Choose a field type and a required setting.");
     const block: FormBlock = { id: raw.id, type: raw.type as FieldType, label: text(raw.label, "Question label", 2000), required: raw.required };
+    if (raw.startsPage !== undefined) {
+      if (raw.startsPage !== true || index === 0) throw new InputError("Start a new page before a block after the first.");
+      block.startsPage = true;
+    }
     if (isContent(block) && block.required) throw new InputError("Content blocks cannot require answers.");
     if (raw.description !== undefined) block.description = text(raw.description, "Description", 2000, false);
     if (isChoice(block.type)) {
@@ -101,9 +117,9 @@ function parseAnswer(answer: unknown, block: FormBlock): Answer {
     }
 }
 // The public form and the API use the same per-field validation rules.
-export function answerErrors(value: Answers, schema: FormSchema): Record<string, string> {
+export function answerErrors(value: Answers, schema: FormSchema, blocks = blocksOf(schema)): Record<string, string> {
   const errors: Record<string, string> = {};
-  for (const block of blocksOf(schema).filter(block => !isContent(block))) {
+  for (const block of blocks.filter(block => !isContent(block))) {
     try { parseAnswer(value[block.id], block); }
     catch (cause) { if (!(cause instanceof InputError)) throw cause; errors[block.id] = cause.message; }
   }

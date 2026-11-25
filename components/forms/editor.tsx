@@ -48,7 +48,9 @@ export function Editor({ id }: { id: string }) {
   function changeBlocks(next: FormBlock[]) {
     if (!draft) return;
     const { question: _question, ...rest } = draft;
-    edit({ ...rest, blocks: next }); setPreviewAnswers({});
+    const [first, ...remaining] = next;
+    const normalized = first?.startsPage ? [{ ...first, startsPage: undefined }, ...remaining] : next;
+    edit({ ...rest, blocks: normalized }); setPreviewAnswers({});
   }
   function move(from: number, to: number) {
     const next = [...blocks]; const [block] = next.splice(from, 1); next.splice(to, 0, block); changeBlocks(next);
@@ -59,7 +61,7 @@ export function Editor({ id }: { id: string }) {
     changeBlocks([...blocks, block]); setSelected(block.id);
   }
   function duplicate(index: number) {
-    const block = { ...blocks[index], id: crypto.randomUUID(), ...(blocks[index].options ? { options: [...blocks[index].options!] } : {}) };
+    const block = { ...blocks[index], id: crypto.randomUUID(), startsPage: undefined, ...(blocks[index].options ? { options: [...blocks[index].options!] } : {}) };
     const next = [...blocks]; next.splice(index + 1, 0, block); changeBlocks(next); setSelected(block.id);
   }
   async function action(operation: "publish" | "unpublish") {
@@ -125,7 +127,7 @@ export function Editor({ id }: { id: string }) {
           <div className="fold-preview-toolbar"><div><p className="fold-editor-eyebrow">Respondent view</p><h2 className="text-xl">Live preview</h2></div><div className="fold-device-switch" role="group" aria-label="Preview device"><Button size="sm" variant={preview === "desktop" ? "secondary" : "ghost"} aria-pressed={preview === "desktop"} onClick={() => setPreview("desktop")}><Monitor />Desktop</Button><Button size="sm" variant={preview === "mobile" ? "secondary" : "ghost"} aria-pressed={preview === "mobile"} onClick={() => setPreview("mobile")}><Smartphone />Mobile</Button></div></div>
           <p className="fold-preview-caption">Try your draft here. Test submissions never enter your responses.</p>
           <div className={`fold-preview-sheet fold-form-surface ${preview === "mobile" ? "is-mobile" : ""}`} data-form-appearance={draft.appearance ?? "classic"}>
-            {previewState?.schema ? previewSuccess ? <><FormConfirmation schema={previewState.schema} preview /><Button variant="outline" onClick={() => { setPreviewSuccess(false); setPreviewNotice(""); }}>Back to form</Button></> : <FormBody schema={previewState.schema} answers={previewAnswers} onChange={setPreviewAnswers} preview error={previewNotice} onSubmit={event => { event.preventDefault(); try { parseAnswers(previewAnswers, previewState.schema!); setPreviewNotice(""); setPreviewSuccess(true); } catch (cause) { setPreviewNotice(cause instanceof Error ? cause.message : "Invalid preview."); } }} /> : <ErrorNotice message={previewState?.error || "Fix the draft configuration to preview this form."} />}
+            {previewState?.schema ? previewSuccess ? <><FormConfirmation schema={previewState.schema} preview /><Button variant="outline" onClick={() => { setPreviewSuccess(false); setPreviewNotice(""); }}>Back to form</Button></> : <FormBody key={blocks.map(block => block.id + (block.startsPage ? "+" : "")).join(",")} schema={previewState.schema} answers={previewAnswers} onChange={setPreviewAnswers} preview error={previewNotice} onComplete={() => { try { parseAnswers(previewAnswers, previewState.schema!); setPreviewNotice(""); setPreviewSuccess(true); } catch (cause) { setPreviewNotice(cause instanceof Error ? cause.message : "Invalid preview."); } }} /> : <ErrorNotice message={previewState?.error || "Fix the draft configuration to preview this form."} />}
           </div>
         </section>
       </div>

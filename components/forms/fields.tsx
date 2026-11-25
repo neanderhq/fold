@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Star } from "lucide-react";
-import { blocksOf, isContent, safeLogo, type Answers, type FormBlock, type FormSchema } from "@/lib/form-schema";
+import { isContent, safeLogo, type Answers, type FormBlock, type FormSchema } from "@/lib/form-schema";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -41,8 +41,8 @@ function AnswerField({ block, id, value, set, disabled, state }: { block: FormBl
   return <Input id={id} {...state} type={block.type === "short_text" ? "text" : block.type} value={typeof value === "string" || typeof value === "number" ? value : ""} onChange={event => set(event.target.value)} required={block.required} min={block.min} max={block.max} step={block.type === "number" ? "any" : undefined} maxLength={block.type === "email" ? 254 : 2000} disabled={disabled} autoComplete="off" />;
 }
 
-export function FormFields({ schema, answers, onChange, disabled = false, prefix = "", errors = {} }: { schema: FormSchema; answers: Answers; onChange: (answers: Answers) => void; disabled?: boolean; prefix?: string; errors?: Record<string, string> }) {
-  return <>{blocksOf(schema).map(block => {
+export function FormFields({ blocks, answers, onChange, disabled = false, prefix = "", errors = {} }: { blocks: FormBlock[]; answers: Answers; onChange: (answers: Answers) => void; disabled?: boolean; prefix?: string; errors?: Record<string, string> }) {
+  return <>{blocks.map(block => {
     const id = `${prefix}${block.id}`, value = answers[block.id];
     if (isContent(block)) return block.type === "heading" ? <h2 key={id} className="break-words text-xl">{block.label}</h2> : <p key={id} className="whitespace-pre-wrap break-words text-muted-foreground">{block.label}</p>;
     const state: FieldState = { "aria-describedby": [block.description ? `${id}-help` : "", errors[block.id] ? `${id}-error` : ""].filter(Boolean).join(" ") || undefined, "aria-invalid": Boolean(errors[block.id]) };
