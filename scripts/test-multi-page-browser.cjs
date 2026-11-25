@@ -42,6 +42,7 @@ async function main() {
     const visitor = await browser.newContext({ baseURL: origin, viewport: { width: 375, height: 900 } });
     await json(await owner.request.post('/api/auth/sign-up/email', { data: { name: 'Workshop reviewer', email, password } }));
     const editor = await owner.newPage();
+    editor.setDefaultTimeout(12000);
     await editor.goto('/');
     await editor.getByRole('button', { name: 'New form', exact: true }).click();
     await editor.getByRole('button', { name: /^Workshop registration/ }).click();
@@ -69,7 +70,7 @@ async function main() {
     await preview.getByRole('heading', { name: 'Page 2 of 2', exact: true }).waitFor();
     await preview.getByRole('combobox', { name: 'Workshop', exact: true }).click();
     await editor.getByRole('option', { name: 'Design basics', exact: true }).click();
-    await preview.getByRole('checkbox', { name: 'I agree', exact: true }).check();
+    await preview.getByRole('checkbox', { name: /I agree/ }).check();
     await preview.getByRole('button', { name: 'Test submission', exact: true }).click();
     await preview.getByText('Preview only — no response was stored.', { exact: true }).waitFor();
     assert.equal((await json(await owner.request.get(`${formPath}/responses?page=1`))).total, 0);
@@ -78,6 +79,7 @@ async function main() {
     await publish(editor, 'Republish');
 
     const page = await visitor.newPage();
+    page.setDefaultTimeout(12000);
     let writes = 0;
     page.on('request', request => { if (request.method() === 'POST' && new URL(request.url()).pathname === publicPath) writes++; });
     await page.goto(`/f/${id}`);
@@ -95,13 +97,13 @@ async function main() {
     assert.equal(await progress.evaluate(element => element === document.activeElement), true);
     await page.getByRole('combobox', { name: 'Workshop', exact: true }).click();
     await page.getByRole('option', { name: 'Design basics', exact: true }).click();
-    await page.getByRole('checkbox', { name: 'I agree', exact: true }).check();
+    await page.getByRole('checkbox', { name: /I agree/ }).check();
     await capture(page, 'last-page-phone');
     await page.getByRole('button', { name: 'Back', exact: true }).press('Enter');
     assert.equal(await page.getByLabel('Your name').inputValue(), 'Jamie West');
     assert.equal(await page.getByLabel('Email address').inputValue(), 'jamie@example.invalid');
     await next.press('Enter');
-    assert.equal(await page.getByRole('checkbox', { name: 'I agree', exact: true }).isChecked(), true);
+    assert.equal(await page.getByRole('checkbox', { name: /I agree/ }).isChecked(), true);
     assert.equal(await page.getByRole('combobox', { name: 'Workshop', exact: true }).textContent(), 'Design basics');
     assert.equal(writes, 0);
     assert.equal((await json(await owner.request.get(`${formPath}/responses?page=1`))).total, 0);
