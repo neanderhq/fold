@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AlertCircle, ArrowLeft, Check, CircleDot, LoaderCircle, Monitor, Plus, Save, Send, Settings2, Smartphone } from "lucide-react";
 import { api } from "@/lib/api-client";
 import type { SavedForm } from "@/lib/form-types";
-import { blocksOf, isChoice, isContent, parseAnswers, type Answers, type FieldType, type FormBlock, type FormSchema } from "@/lib/form-schema";
+import { blocksOf, followUpControllers, isChoice, isContent, parseAnswers, type Answers, type FieldType, type FormBlock, type FormSchema } from "@/lib/form-schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -104,7 +104,7 @@ export function Editor({ id }: { id: string }) {
             <TabsList aria-label="Editor sections"><TabsTrigger value="questions">Questions <span className="fold-count">{blocks.filter(block => !isContent(block)).length}</span></TabsTrigger><TabsTrigger value="settings"><Settings2 />Settings</TabsTrigger></TabsList>
             <TabsContent value="questions" className="space-y-3 pt-5">
               <p id="fold-reorder-help" className="sr-only">Drag blocks to reorder, or open a block and use its Move up and Move down buttons.</p>
-              {blocks.map((block, index) => <QuestionCard key={block.id} block={block} index={index} count={blocks.length} expanded={selected === block.id} disabled={busy}
+              {blocks.map((block, index) => <QuestionCard key={block.id} block={block} controllers={followUpControllers(blocks, index)} index={index} count={blocks.length} expanded={selected === block.id} disabled={busy}
                 dropTarget={dropTarget === block.id} onSelect={() => setSelected(selected === block.id ? null : block.id)}
                 onChange={next => changeBlocks(blocks.map((item, position) => position === index ? next : item))}
                 onMove={direction => move(index, index + direction)} onDuplicate={() => duplicate(index)}

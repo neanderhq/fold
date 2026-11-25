@@ -1,6 +1,7 @@
 export const fieldTypes = ["short_text", "long_text", "email", "number", "date", "single_choice", "multi_choice", "dropdown", "rating", "consent", "heading", "description"] as const;
 export type FieldType = typeof fieldTypes[number];
-export type FormBlock = { id: string; type: FieldType; label: string; required: boolean; description?: string; options?: string[]; min?: number; max?: number; startsPage?: true };
+export type FollowUp = { controllerId: string; equals: string };
+export type FormBlock = { id: string; type: FieldType; label: string; required: boolean; description?: string; options?: string[]; min?: number; max?: number; startsPage?: true; followUp?: FollowUp };
 export const appearances = ["classic", "paper", "meadow"] as const;
 export type FormSchema = { title: string; question?: FormBlock; blocks?: FormBlock[]; description?: string; logoUrl?: string; confirmation?: string; appearance?: typeof appearances[number] };
 export type Answer = string | string[] | number | boolean;
@@ -28,6 +29,29 @@ export function pagesOf(schema: FormSchema): FormBlock[][] {
 }
 export function isContent(block: FormBlock) { return block.type === "heading" || block.type === "description"; }
 export function isChoice(type: FieldType) { return ["single_choice", "multi_choice", "dropdown"].includes(type); }
+export function followUpControllers(blocks: FormBlock[], index: number) {
+  if (blocks[index]?.startsPage) return [];
+  let start = index;
+  while (start > 0) {
+    start--;
+    if (blocks[start].startsPage) break;
+  }
+  return blocks.slice(start, index).filter(block =>
+    !block.followUp && (block.type === "single_choice" || block.type === "dropdown")
+  );
+}
+export function isBlockVisible(block: FormBlock, answers: Record<string, unknown>) {
+  if (!block.followUp) return true;
+  const answer = answers[block.followUp.controllerId];
+  return typeof answer === "string" && answer.trim() === block.followUp.equals;
+}
+export function clearHiddenAnswers(answers: Answers, schema: FormSchema): Answers {
+  const next = { ...answers };
+  for (const block of blocksOf(schema)) {
+    if (!isBlockVisible(block, answers)) delete next[block.id];
+  }
+  return next;
+}
 function exactKeys(value: Record<string, unknown>, keys: string[]) {
   if (Object.keys(value).some((key) => !keys.includes(key))) throw new InputError("Unknown fields are not allowed.");
 }
@@ -52,7 +76,7 @@ export function parseSchema(value: unknown, questionId?: string): FormSchema {
   const seen = new Set<string>();
   const blocks = source.map((raw, index): FormBlock => {
     if (!isRecord(raw)) throw new InputError("Invalid question.");
-    exactKeys(raw, ["id", "type", "label", "required", "description", "options", "min", "max", "startsPage"]);
+    exactKeys(raw, ["id", "type", "label", "required", "description", "options", "min", "max", "startsPage", "followUp"]);
     if (!validId(raw.id) || seen.has(raw.id) || (legacy && questionId && raw.id !== questionId)) throw new InputError("Use unique, stable question IDs. The question ID cannot change.");
     seen.add(raw.id);
     if (!fieldTypes.includes(raw.type as FieldType) || typeof raw.required !== "boolean") throw new InputError("Choose a field type and a required setting.");
@@ -60,6 +84,16 @@ export function parseSchema(value: unknown, questionId?: string): FormSchema {
     if (raw.startsPage !== undefined) {
       if (raw.startsPage !== true || index === 0) throw new InputError("Start a new page before a block after the first.");
       block.startsPage = true;
+    }
+    if (raw.followUp !== undefined) {
+      if (!isRecord(raw.followUp) || isContent(block) || !validId(raw.followUp.controllerId)) {
+        throw new InputError("Use a valid conditional follow-up on a question.");
+      }
+      exactKeys(raw.followUp, ["controllerId", "equals"]);
+      block.followUp = {
+        controllerId: raw.followUp.controllerId,
+        equals: text(raw.followUp.equals, "Matching answer", 200),
+      };
     }
     if (isContent(block) && block.required) throw new InputError("Content blocks cannot require answers.");
     if (raw.description !== undefined) block.description = text(raw.description, "Description", 2000, false);
@@ -80,6 +114,14 @@ export function parseSchema(value: unknown, questionId?: string): FormSchema {
     if (block.min !== undefined && block.max !== undefined && block.min > block.max) throw new InputError("Minimum cannot exceed maximum.");
     return block;
   });
+  for (const [index, block] of blocks.entries()) {
+    if (!block.followUp) continue;
+    const rule = block.followUp;
+    const controller = followUpControllers(blocks, index).find(item => item.id === rule.controllerId);
+    if (!controller?.options?.includes(rule.equals)) {
+      throw new InputError(`Fix the follow-up on “${block.label}”. Choose an earlier single choice or dropdown on this page and an existing answer.`);
+    }
+  }
   if (blocks.every(isContent)) throw new InputError("Add at least one question.");
   const result: FormSchema = { title: text(value.title, "Form title", 200), ...(legacy ? { question: blocks[0] } : { blocks }) };
   for (const key of ["description", "logoUrl", "confirmation"] as const) if (value[key] !== undefined) result[key] = text(value[key], key, key === "logoUrl" ? 2048 : 2000, false);
@@ -119,7 +161,7 @@ function parseAnswer(answer: unknown, block: FormBlock): Answer {
 // The public form and the API use the same per-field validation rules.
 export function answerErrors(value: Answers, schema: FormSchema, blocks = blocksOf(schema)): Record<string, string> {
   const errors: Record<string, string> = {};
-  for (const block of blocks.filter(block => !isContent(block))) {
+  for (const block of blocks.filter(block => !isContent(block) && isBlockVisible(block, value))) {
     try { parseAnswer(value[block.id], block); }
     catch (cause) { if (!(cause instanceof InputError)) throw cause; errors[block.id] = cause.message; }
   }
@@ -129,6 +171,11 @@ export function parseAnswers(value: unknown, schema: FormSchema): Answers {
   if (!isRecord(value)) throw new InputError("Answers must be an object.");
   const fields = blocksOf(schema).filter(block => !isContent(block));
   exactKeys(value, fields.map(block => block.id));
-  return Object.fromEntries(fields.map(block => [block.id, parseAnswer(value[block.id], block)]));
+  const entries: [string, Answer][] = [];
+  for (const block of fields) {
+    if (isBlockVisible(block, value)) entries.push([block.id, parseAnswer(value[block.id], block)]);
+    else if (Object.hasOwn(value, block.id)) throw new InputError("Remove answers to hidden questions and try again.");
+  }
+  return Object.fromEntries(entries);
 }
 export function answerText(value: Answer | undefined): string { return Array.isArray(value) ? value.join("; ") : value === undefined ? "" : String(value); }

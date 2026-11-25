@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
-import { answerErrors, pagesOf, type Answers, type FormSchema } from "@/lib/form-schema";
+import { answerErrors, clearHiddenAnswers, isBlockVisible, pagesOf, type Answers, type FormSchema } from "@/lib/form-schema";
 import { Button } from "@/components/ui/button";
 import { ErrorNotice } from "./shared";
 import { FormFields, FormHeading } from "./fields";
@@ -19,7 +19,7 @@ export function FormBody({ schema, answers, onChange, onComplete, busy = false, 
   const nextFocus = useRef<string | null>(null);
   const pages = pagesOf(schema);
   const current = Math.min(page, pages.length - 1);
-  const blocks = pages[current];
+  const blocks = pages[current].filter(block => isBlockVisible(block, answers));
   const last = current === pages.length - 1;
   const errors = attempted ? answerErrors(answers, schema, blocks) : {};
   const invalid = blocks.filter(block => errors[block.id]);
@@ -63,7 +63,7 @@ export function FormBody({ schema, answers, onChange, onComplete, busy = false, 
     <FormHeading schema={schema} />
     {pages.length > 1 && <h2 ref={pageHeading} tabIndex={-1} className="fold-page-progress">Page {current + 1} of {pages.length}</h2>}
     {invalid.length > 0 && <div role="alert" className="fold-error-summary"><p className="font-semibold">{invalid.length} {invalid.length === 1 ? "question needs" : "questions need"} your attention.</p><ul className="mt-2 space-y-1">{invalid.map(block => <li key={block.id}><button type="button" onClick={() => focusField(block.id)} className="text-left underline underline-offset-2">{block.label}</button></li>)}</ul></div>}
-    <FormFields blocks={blocks} answers={answers} onChange={onChange} disabled={busy} prefix={preview ? "preview-" : ""} errors={errors} />
+    <FormFields blocks={blocks} answers={answers} onChange={next => onChange(clearHiddenAnswers(next, schema))} disabled={busy} prefix={preview ? "preview-" : ""} errors={errors} />
     {error && <ErrorNotice message={error} />}
     {pages.length === 1 ? submitButton : <div className="flex flex-wrap items-center gap-3">
       {current > 0 && <Button type="button" size="lg" variant="outline" disabled={busy} onClick={() => goTo(current - 1)}><ArrowLeft />Back</Button>}
