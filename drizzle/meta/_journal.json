@@ -15,6 +15,20 @@
       "when": 1794507133751,
       "tag": "0001_misty_morlun",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795602571210,
+      "tag": "0002_response_alerts",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795602758427,
+      "tag": "0003_google_sheets_sync",
+      "breakpoints": true
     }
   ]
 }

@@ -127,3 +127,27 @@ test("answer summaries weight counts, include unanswered questions and preserve 
   assert.equal(summaries[1].answered, 3); assert.equal(summaries[1].responses, 4);
   assert.equal(summaries[2].average, 9); assert.equal(summaries[3].options[1].count, 1);
 });
+
+test("conditional follow-ups share visible validation and exclude hidden data", async () => {
+  const { clearHiddenAnswers } = await import("../lib/form-schema.ts");
+  const controller = field("single_choice", { options: ["Yes", "No"] });
+  const target = field("short_text", { followUp: { controllerId: controller.id, equals: "Yes" } });
+  const form = (blocks) => parseSchema({ title: "Conditional", blocks });
+  const valid = form([controller, target]);
+  const yes = { [controller.id]: "Yes" }, no = { [controller.id]: "No" };
+  assert.deepEqual(parseAnswers(no, valid), no);
+  assert.deepEqual(Object.keys(answerErrors(yes, valid)), [target.id]);
+  assert.deepEqual(answerErrors(no, valid), {});
+  assert.throws(() => parseAnswers({ ...no, [target.id]: "hidden" }, valid), /hidden/);
+  assert.throws(() => parseAnswers({ ...no, [target.id]: "" }, valid), /hidden/);
+  assert.deepEqual(clearHiddenAnswers({ ...no, [target.id]: "hidden" }, valid), no);
+  assert.deepEqual(parseAnswers({ ...yes, [target.id]: "visible" }, valid), { ...yes, [target.id]: "visible" });
+  assert.deepEqual(parseAnswers({ [controller.id]: " Yes ", [target.id]: " visible " }, valid), { ...yes, [target.id]: "visible" });
+  assert.throws(() => form([target, controller]), /Fix the follow-up/);
+  assert.throws(() => form([controller, { ...target, startsPage: true }]), /Fix the follow-up/);
+  assert.throws(() => form([{ ...controller, options: ["Maybe", "No"] }, target]), /Fix the follow-up/);
+  const earlier = field("dropdown", { options: ["Yes", "No"] });
+  assert.doesNotThrow(() => form([earlier, field("heading", { required: false }), { ...target, followUp: { controllerId: earlier.id, equals: "No" } }]));
+  assert.throws(() => form([earlier, { ...controller, followUp: { controllerId: earlier.id, equals: "No" } }, target]), /Fix the follow-up/);
+  assert.throws(() => form([controller, { ...target, type: "description", required: false }]), /conditional follow-up/);
+});

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AlertCircle, ArrowLeft, Check, CircleDot, LoaderCircle, Monitor, Plus, Save, Send, Settings2, Smartphone } from "lucide-react";
 import { api } from "@/lib/api-client";
 import type { SavedForm } from "@/lib/form-types";
-import { blocksOf, isChoice, isContent, parseAnswers, type Answers, type FieldType, type FormBlock, type FormSchema } from "@/lib/form-schema";
+import { blocksOf, followUpControllers, isChoice, isContent, parseAnswers, type Answers, type FieldType, type FormBlock, type FormSchema } from "@/lib/form-schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -104,7 +104,7 @@ export function Editor({ id }: { id: string }) {
             <TabsList aria-label="Editor sections"><TabsTrigger value="questions">Questions <span className="fold-count">{blocks.filter(block => !isContent(block)).length}</span></TabsTrigger><TabsTrigger value="settings"><Settings2 />Settings</TabsTrigger></TabsList>
             <TabsContent value="questions" className="space-y-3 pt-5">
               <p id="fold-reorder-help" className="sr-only">Drag blocks to reorder, or open a block and use its Move up and Move down buttons.</p>
-              {blocks.map((block, index) => <QuestionCard key={block.id} block={block} index={index} count={blocks.length} expanded={selected === block.id} disabled={busy}
+              {blocks.map((block, index) => <QuestionCard key={block.id} block={block} controllers={followUpControllers(blocks, index)} index={index} count={blocks.length} expanded={selected === block.id} disabled={busy}
                 dropTarget={dropTarget === block.id} onSelect={() => setSelected(selected === block.id ? null : block.id)}
                 onChange={next => changeBlocks(blocks.map((item, position) => position === index ? next : item))}
                 onMove={direction => move(index, index + direction)} onDuplicate={() => duplicate(index)}
@@ -116,7 +116,7 @@ export function Editor({ id }: { id: string }) {
               <p className="fold-block-help">Choose from 12 question and content types. Drag to reorder or use the arrow buttons.</p>
             </TabsContent>
             <TabsContent value="settings" className="fold-form-settings">
-              <div><h2>Make it yours</h2><p className="text-sm text-muted-foreground">Set the finishing touches for this form.</p></div>
+              <div><h2>Make it yours</h2><p className="text-sm text-muted-foreground">Set the finishing touches for this form.</p><Link href={`/forms/${id}/integrations`} className="mt-2 inline-block text-sm text-primary underline" onNavigate={event => { if (!confirmLeave()) event.preventDefault(); }}>Manage integrations</Link></div>
               <AppearancePicker value={draft.appearance} disabled={busy} onChange={appearance => edit({ ...draft, appearance })} />
               <div className="space-y-2"><Label htmlFor="logo">Logo URL (HTTPS)</Label><Input id="logo" type="url" disabled={busy} value={draft.logoUrl ?? ""} placeholder="https://example.com/logo.png" onChange={event => edit({ ...draft, logoUrl: event.target.value })} /><p className="text-xs text-muted-foreground">Use a trusted hosted image. The image host can see visitors’ IP addresses. Fold sends no referrer and doesn’t fetch the image on its server.</p></div>
               <div className="space-y-2"><Label htmlFor="confirmation">Confirmation message</Label><Textarea id="confirmation" maxLength={2000} disabled={busy} value={draft.confirmation ?? ""} placeholder="Your response has been saved." onChange={event => edit({ ...draft, confirmation: event.target.value })} /><p className="text-xs text-muted-foreground">Shown after a successful submission. Try it in the preview.</p></div>

@@ -2,37 +2,41 @@ contract_version: 1
 id: fold
 title: Fold
 description: |
-  **Build forms, share them and make sense of the responses.**
+  **Build forms that adapt to answers and route new responses.**
 
-  Fold is a single-owner form workspace inspired by Tally. Start with a blank form or a ready-to-edit example, edit questions and choices directly, and publish a link or iframe. Forms include star ratings, inline validation and three visual presets. Review individual responses and answer summaries while preserving original question snapshots.
+  Fold is a single-owner workspace for feedback, enquiries and registrations. Start from a blank form or an editable example, group questions into pages, and reveal follow-up questions based on an earlier answer. Preview changes before publishing a link or iframe.
 
-  Explore fictional feedback and workshop forms, sample responses and an unpublished project-enquiry draft. Email/password accounts use PostgreSQL-backed sessions. Password recovery requires your own verified email delivery configuration; it is disabled by default. Team collaboration, conditional logic, file uploads and payments are not included.
+  Search responses, review answer summaries and export a CSV. Original question snapshots stay with each response. With provider setup, opt into email alerts with a private response link or sync selected fields from new submissions to an authorized Google spreadsheet. Delivery activity shows successes, failures and retry controls.
+
+  The template comes with fictional feedback and workshop forms, five sample responses and a project enquiry draft. Password recovery, response alerts and Sheets sync are optional and require their respective provider configuration.
 category: Forms & Surveys
 best_for: Individuals collecting feedback, enquiries and event registrations
 features:
-  - Twelve block types, star ratings and choice tiles
+  - Twelve question and content block types
+  - Multi-page forms with conditional follow-up questions
   - Feedback, workshop and enquiry starters
-  - Autosaved drafts and explicit publish or unpublish
-  - Three visual presets with live previews
-  - Shareable public forms and iframe embeds
-  - Response summaries, search, date filters and pagination
-  - Historical answer snapshots and CSV export
-  - Form duplication, archive and restore
+  - Autosaved drafts, live preview and explicit publishing
+  - Three visual presets, public links and iframe embeds
+  - Response search, date filters, summaries and CSV export
+  - Historical answer snapshots and form duplication, archive and restore
+  - Opt-in alerts to the verified owner's inbox
+  - Selected-field Google Sheets sync with delivery status and retry
 included:
-  - Fold form builder and response workspace
+  - Fold form builder and private response workspace
   - PostgreSQL migrations and session authentication
   - Fictional forms and five sample responses
-  - Optional password recovery configuration guide
+  - Optional password recovery setup guide
+  - Setup guides for owner alerts and Google Sheets
 thumbnail: .neander/thumbnail.png
 screenshots:
-  - .neander/screenshots/editor.png
-  - .neander/screenshots/add-block.png
-  - .neander/screenshots/share.png
+  - .neander/screenshots/conditional-follow-up.png
+  - .neander/screenshots/registration.png
+  - .neander/screenshots/integrations.png
+  - .neander/screenshots/delivery-recovery.png
   - .neander/screenshots/responses.png
-  - .neander/screenshots/public-form.png
+  - .neander/screenshots/summary.png
   - .neander/screenshots/start-form.png
   - .neander/screenshots/appearance.png
-  - .neander/screenshots/summary.png
 commands:
   install: [pnpm, install, --frozen-lockfile]
   check: [pnpm, run, check]

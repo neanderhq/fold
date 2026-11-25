@@ -2,8 +2,8 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { randomUUID } from 'node:crypto';
-import { mkdtemp, writeFile, rm, mkdir } from 'node:fs/promises';
+import { generateKeyPairSync, randomUUID } from 'node:crypto';
+import { mkdtemp, writeFile, rm, mkdir, copyFile, chmod } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -106,6 +106,9 @@ async function main() {
     await run('pnpm', ['db:seed']); await exec('docker', ['restart', name], { timeout: 60000 }); await ready();
     assert.equal((await json(await context.request.get(`${origin.origin}/api/forms/${FORM}`))).draft.title, edited.title);
     assert.equal((await json(await anonymous.request.get(`${origin.origin}/api/public/forms/${FORM}`))).title, draft.title);
+    await page.goto(`${origin.origin}/forms/${FORM}/integrations`);
+    await page.getByRole('status', { name: 'Alert status' }).getByText('Sender unconfigured').waitFor();
+    await page.getByRole('status', { name: 'Sheets status' }).getByText('Google Sheets unconfigured').waitFor();
     await context.close(); await anonymous.close(); await browser.close(); browser = undefined;
     // Existing delivery tests now run against the isolated production image.
     await run(process.execPath, ['scripts/test-foundation.mjs', '--in-process']);
@@ -118,6 +121,31 @@ async function main() {
     await run(process.execPath, ['scripts/test-editor-browser.cjs'], { env: browserEnvironment });
     await run(process.execPath, ['scripts/test-product-polish-browser.cjs'], { env: browserEnvironment });
     await run(process.execPath, ['scripts/test-multi-page-browser.cjs'], { env: browserEnvironment });
+    await run(process.execPath, ['scripts/test-conditional-browser.cjs'], { env: browserEnvironment });
+
+    // Restart the same image with only synthetic provider credentials and a
+    // fixture that intercepts the actual provider HTTP requests before I/O.
+    await exec('docker', ['rm', '--force', name], { timeout: 30000 });
+    const providerDirectory = join(directory, 'provider');
+    await mkdir(providerDirectory);
+    await chmod(providerDirectory, 0o777);
+    await copyFile('scripts/test-delivery-provider.cjs', join(providerDirectory, 'provider.cjs'));
+    await writeFile(join(providerDirectory, 'controls.json'), JSON.stringify({ mail: 'ok', sheets: 'ok', proofs: {} }));
+    const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { format: 'pem', type: 'pkcs8' }, publicKeyEncoding: { format: 'pem', type: 'spki' } });
+    const controlledEnvironment = {
+      ...environment,
+      RESEND_API_KEY: 'synthetic-fold-provider-test',
+      RESPONSE_ALERT_FROM: 'Fold <alerts@example.invalid>',
+      RESPONSE_ALERT_SENDER_VERIFIED: 'true',
+      GOOGLE_SHEETS_SERVICE_EMAIL: 'fold-test@fold-test.iam.gserviceaccount.com',
+      GOOGLE_SHEETS_SERVICE_KEY: privateKey.trim().replaceAll('\n', '\\n'),
+    };
+    await writeFile(bundle, Object.entries(controlledEnvironment).map(([key, value]) => `${key}=${value}`).join('\n') + '\n');
+    await exec('docker', ['run', '--detach', '--name', name, '--mount', `type=bind,src=${bundle},dst=/run/secrets/neander_environment,readonly`,
+      '--mount', `type=bind,src=${providerDirectory},dst=/fold-provider-test`,
+      '--env', 'NODE_OPTIONS=--require=/fold-provider-test/provider.cjs', ...networking, image], { timeout: 60000 });
+    await ready();
+    await run(process.execPath, ['scripts/test-delivery-browser.cjs'], { env: { ...browserEnvironment, FOLD_PROVIDER_FIXTURE_DIR: providerDirectory } });
     console.log('PASS: built Fold image, fictional seeded owner/forms/responses, repeat seed preservation, persistent edit after restart, live API and desktop/mobile browser suites');
   } finally {
     await browser?.close(); if (connected) await db.end();

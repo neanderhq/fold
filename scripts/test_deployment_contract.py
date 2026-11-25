@@ -21,7 +21,9 @@ class DeploymentExamplesTests(unittest.TestCase):
         recovery = {'PASSWORD_RESET_ENABLED', 'PASSWORD_RESET_DELIVERY_MODE',
                     'PASSWORD_RESET_FROM', 'PASSWORD_RESET_PREVIEW_RECIPIENT',
                     'PASSWORD_RESET_SENDER_VERIFIED', 'RESEND_API_KEY'}
-        self.assertEqual(set(requirements), foundation | recovery)
+        delivery = {'RESPONSE_ALERT_FROM', 'RESPONSE_ALERT_SENDER_VERIFIED',
+                    'GOOGLE_SHEETS_SERVICE_EMAIL', 'GOOGLE_SHEETS_SERVICE_KEY'}
+        self.assertEqual(set(requirements), foundation | recovery | delivery)
         self.assertEqual(requirements['DATABASE_URL']['provider'], 'Neon')
         self.assertEqual(requirements['BETTER_AUTH_URL']['binding'], 'public_origin')
         self.assertEqual(requirements['BETTER_AUTH_URL']['provider'], 'Neander')
@@ -32,7 +34,7 @@ class DeploymentExamplesTests(unittest.TestCase):
         for name, item in requirements.items():
             self.assertEqual(item['service'], 'web')
             self.assertIs(item['required'], name in foundation)
-            if name in recovery:
+            if name in recovery | delivery:
                 self.assertEqual(item['source'], 'user')
                 self.assertIsNone(item['provider'])
 

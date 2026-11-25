@@ -2,6 +2,7 @@ import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { isRecord, parseSchema, validId } from "@/lib/form-schema";
 import { responseCsv } from "@/lib/response-csv";
 import { starterDraft } from "@/lib/form-starters";
+import { deliverySettingsApi } from "./delivery-settings";
 import { responseSummaries } from "./response-summary";
 import { getDb } from "./db";
 import { forms, responses } from "./schema";
@@ -46,6 +47,7 @@ export function formsApi(request: Request, path: string[]) {
     }
     const [formId, action, responseId] = path;
     if (!validId(formId)) throw new HttpError(404, "Form not found.");
+    if (action === "integrations" && path.length === 2) return deliverySettingsApi(request, owner, workspace.id, formId);
     const owned = and(eq(forms.id, formId), eq(forms.workspaceId, workspace.id));
     if (request.method === "GET") {
       const [form] = await db.select().from(forms).where(owned);
