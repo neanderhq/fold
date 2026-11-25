@@ -107,8 +107,13 @@ async function main() {
 
     await editor.getByRole("button", { name: "Settings for block 2", exact: true }).click();
     await editor.getByRole("button", { name: "Move block 2 up", exact: true }).click();
-    await editor.getByText("Choose an earlier unconditional choice on this page", { exact: false }).waitFor();
+    await editor.getByText("Fix the follow-up on", { exact: false }).first().waitFor();
     assert.ok(await editor.getByRole("button", { name: "Republish" }).isDisabled());
+    await editor.locator(`[data-block-id="${followUp.id}"] summary`).press("Enter");
+    await editor.getByText("Choose an earlier unconditional choice on this page", { exact: false }).waitFor();
+    await editor.getByLabel("Show this question when").selectOption("");
+    await editor.getByRole("status", { name: "Draft save status", exact: true }).getByText("All changes saved", { exact: true }).waitFor();
+    assert.equal((await json(await owner.request.get(path))).draft.blocks[0].followUp, undefined);
     console.log("FOLD_CONDITIONAL_PASSED: draft/publish, roles, 375px keyboard branches, hidden values, validation, repair and preserved history");
   } finally {
     await browser.close();
