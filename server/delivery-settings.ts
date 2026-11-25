@@ -59,7 +59,8 @@ export async function deliverySettingsApi(request: Request, owner: Owner, worksp
     await tx.insert(responseSettings).values({ formId, ...setting }).onConflictDoUpdate({
       target: responseSettings.formId, set: setting,
     });
-    if (action === "alert-disable") await cancelDeliveries(tx, formId, "alert");
+    const recipientChanged = alert && row?.alert.address && alert.settings.address !== row.alert.address;
+    if (action === "alert-disable" || recipientChanged) await cancelDeliveries(tx, formId, "alert");
     if (action === "sheets-disconnect") await cancelDeliveries(tx, formId, "sheets");
     return alert?.error ?? sheets?.error;
   });
