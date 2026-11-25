@@ -42,7 +42,7 @@
     "@types/pg": "8.23.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
-    "auth": "1.7.21",
+    "auth": "1.7.27",
     "drizzle-kit": "0.31.10",
     "playwright": "1.65.1",
     "postcss": "8.5.23",
